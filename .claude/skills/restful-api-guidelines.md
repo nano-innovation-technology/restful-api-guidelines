@@ -46,6 +46,7 @@ POST   /users/{id}:deactivate
 | GET | 200 OK | Retrieval success |
 | POST (create) | 201 Created + Location header | Resource created |
 | POST (action) | 200 OK | Action performed |
+| POST (long-running) | 201 Created + Location header | Long-running task — domain resource created immediately with status field |
 | PUT | 200 OK | Full replacement success |
 | PATCH | 200 OK | Partial update success |
 | DELETE | 204 No Content | Deletion success (no body) |
@@ -305,10 +306,11 @@ When reviewing API code, identify violations using the checklist below and sugge
 - [ ] 401 (authentication failure) / 403 (authorization failure) properly distinguished
 - [ ] `Idempotency-Key` supported for duplicate-risk POST operations (payments, orders, etc.)
 
-#### Async Operations (202 Accepted)
-- [ ] 202 response includes `Location` header (operation URL)
-- [ ] Operation status values use `PENDING`/`IN_PROGRESS`/`COMPLETED`/`FAILED`
-- [ ] `FAILED` status response body includes RFC 7807 error structure
+#### Long-Running Tasks
+- [ ] Long-running task returns 201 Created + Location header pointing to domain resource
+- [ ] Domain resource has `status` field (`PENDING`/`IN_PROGRESS`/`COMPLETED`/`FAILED`)
+- [ ] No generic `/operations` endpoint — status tracked on the domain resource itself
+- [ ] `FAILED` status includes RFC 7807 error structure in the resource body
 
 #### Filtering
 - [ ] Range filters use `After`/`Before` suffix (`createdAfter`, `createdBefore`)

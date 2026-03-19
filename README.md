@@ -39,6 +39,7 @@ RESTful API 설계 가이드라인입니다.
    - [API 버전 관리](#54-api-버전-관리)
    - [Deprecation](#55-deprecation)
    - [속도 제한](#56-속도-제한)
+   - [장기 실행 작업](#57-장기-실행-작업)
 6. [인증 및 보안](#6-인증-및-보안)
    - [인증 방식](#61-인증-방식)
    - [401 vs 403 구분](#62-401-vs-403-구분)
@@ -175,7 +176,6 @@ GET /articles?page_size=20&sort_order=desc
 |------|------|-----------|
 | 200 OK | 성공 | GET, PUT, PATCH, POST(액션) 성공 |
 | 201 Created | 생성됨 | POST로 리소스 생성 성공 |
-| 202 Accepted | 수락됨 | 비동기 작업 수락 |
 | 204 No Content | 내용 없음 | DELETE 성공, 응답 본문 없음 |
 
 **4xx 클라이언트 오류**
@@ -207,61 +207,6 @@ Content-Type: application/json
 {
   "id": "456",
   "title": "새 글 제목"
-}
-```
-
-⚠️ **권장**: 202 Accepted 응답에는 작업 상태를 조회할 수 있는 `Location` 헤더를 포함한다.
-
-```
-HTTP/1.1 202 Accepted
-Location: /operations/op-abc-123
-Content-Type: application/json
-
-{
-  "operationId": "op-abc-123",
-  "status": "PENDING"
-}
-```
-
-**비동기 작업 폴링 패턴:**
-
-```
-# 1단계: 작업 시작
-POST /reports/generate  →  202 Accepted
-                            Location: /operations/op-abc-123
-
-# 2단계: 상태 조회 (폴링)
-GET /operations/op-abc-123  →  200 OK
-                                { "status": "IN_PROGRESS", "progress": 40 }
-
-# 3단계: 완료 확인
-GET /operations/op-abc-123  →  200 OK
-                                { "status": "COMPLETED", "resultUrl": "/reports/789" }
-
-# 4단계: 결과 조회
-GET /reports/789  →  200 OK
-```
-
-**Operation 상태값:**
-
-| 상태 | 설명 |
-|------|------|
-| `PENDING` | 작업 대기 중 |
-| `IN_PROGRESS` | 작업 처리 중 |
-| `COMPLETED` | 작업 완료 |
-| `FAILED` | 작업 실패 |
-
-✅ **필수**: `FAILED` 상태인 경우 응답 본문에 RFC 7807 에러 구조를 포함한다.
-
-```json
-{
-  "status": "FAILED",
-  "error": {
-    "type": "https://api.example.com/errors/report-generation-failed",
-    "title": "보고서 생성 실패",
-    "status": 500,
-    "detail": "데이터 집계 중 오류가 발생했습니다."
-  }
 }
 ```
 
@@ -1029,6 +974,43 @@ RateLimit-Policy: 100;w=3600
 ❌ **금지**: 429 응답 수신 시 즉시 재시도하거나 고정 간격으로 반복 재시도하지 않는다.
 
 ❌ **금지**: `Retry-After` 헤더가 있을 때 해당 값을 무시하고 자체 대기 시간을 사용하지 않는다.
+
+---
+
+### 5.7 장기 실행 작업
+
+즉시 완료되지 않는 작업(보고서 생성, 데이터 가져오기 등)은 도메인 리소스를 즉시 생성하고 리소스의 상태 필드로 처리 진행 상황을 추적한다.
+
+✅ **필수**: 장기 실행 작업 요청 시 도메인 리소스를 즉시 생성하고 `201 Created` + `Location` 헤더를 반환한다.
+
+✅ **필수**: 도메인 리소스에 `status` 필드를 포함하여 처리 상태를 표현한다.
+
+⚠️ **권장**: 상태값은 다음을 사용한다.
+
+| 상태 | 설명 |
+|------|------|
+| `PENDING` | 작업 대기 중 |
+| `IN_PROGRESS` | 작업 처리 중 |
+| `COMPLETED` | 작업 완료 |
+| `FAILED` | 작업 실패 |
+
+⚠️ **권장**: `FAILED` 상태인 경우 리소스에 RFC 7807 에러 구조를 포함한다.
+
+**예시:**
+
+```
+# 작업 시작 — 도메인 리소스 즉시 생성
+POST /reports  →  201 Created
+                  Location: /reports/123
+                  { "id": "123", "status": "PENDING" }
+
+# 상태 조회 (폴링)
+GET /reports/123  →  { "id": "123", "status": "IN_PROGRESS" }
+GET /reports/123  →  { "id": "123", "status": "COMPLETED", ... }
+GET /reports/123  →  { "id": "123", "status": "FAILED", "error": { ... } }
+```
+
+❌ **금지**: 별도의 범용 `/operations` 리소스를 사용하지 않는다. 도메인 리소스 자체에서 상태를 추적한다.
 
 ---
 

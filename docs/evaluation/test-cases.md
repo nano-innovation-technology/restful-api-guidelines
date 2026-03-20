@@ -48,6 +48,32 @@ class UserProfileController {
 
 ---
 
+### TC-2-01a: URL 허용 문자 제한 (ASCII 영소문자/숫자/하이픈만)
+
+- 규칙: "URL 경로 세그먼트에는 ASCII 영소문자, 숫자, 하이픈(`-`)만 사용한다"
+- 규범 수준: ✅필수
+- 대상 모드: Both
+- 스킬 커버: Writing: PARTIAL / Review: PARTIAL
+  (coverage-map.md 2.1-5 기준)
+
+❌ Bad:
+```
+GET /사용자_프로필          # 비ASCII 문자
+GET /User-Profiles       # 대문자
+GET /user_profiles       # 언더스코어
+GET /userProfiles        # camelCase
+```
+
+✅ Good:
+```
+GET /user-profiles
+GET /article-categories/123
+```
+
+- 검증 포인트: Review 체크리스트 "Lowercase kebab-case used in paths"가 kebab-case를 다루지만 허용 문자 집합(ASCII 영소문자/숫자/하이픈만) 명시가 없어 PARTIAL. 비ASCII 문자 사용 케이스는 탐지 불가.
+
+---
+
 ### TC-2-02: 리소스 컬렉션 복수형 명사
 
 - 규칙: "✅ **필수**: 리소스 컬렉션 이름은 복수형 명사를 사용한다."
@@ -392,17 +418,12 @@ fun getArticle(@PathVariable id: String): ResponseEntity<Article> {
 ❌ Bad:
 ```kotlin
 // 쿼리 파라미터로 서버 상태 변경 — 금지
-@GetMapping("/articles/{id}")
-fun updateArticleStatus(
-    @PathVariable id: String,
-    @RequestParam action: String  // ?action=publish
-): ResponseEntity<Article> {
-    val article = when (action) {
-        "publish" -> articleService.publish(id)
-        "archive" -> articleService.archive(id)
-        else -> throw IllegalArgumentException("Unknown action: $action")
+@PostMapping("/articles")  // GET → POST로 변경
+fun publishArticle(@RequestParam action: String, @RequestParam id: String): ResponseEntity<Article> {
+    if (action == "publish") {
+        return ResponseEntity.ok(articleService.publish(id))
     }
-    return ResponseEntity.ok(article)
+    return ResponseEntity.badRequest().build()
 }
 ```
 
@@ -473,32 +494,28 @@ fun getArticles(
 
 ❌ Bad:
 ```kotlin
-// Content-Type 없이 응답 반환
-@GetMapping("/articles/{id}")
-fun getArticle(@PathVariable id: String): ResponseEntity<Article> {
-    val article = articleService.findById(id)
-    // Content-Type 헤더 명시 없음 — 프레임워크 기본 설정에 의존
-    return ResponseEntity.ok(article)
-}
-
-// 에러 응답에서만 Content-Type 설정하고 정상 응답은 누락하는 패턴
-@PostMapping("/articles")
+// Bad — Content-Type 헤더를 명시하지 않고 응답 본문을 반환
+@PostMapping
 fun createArticle(@RequestBody request: CreateArticleRequest): ResponseEntity<Article> {
     val article = articleService.create(request)
     val location = URI.create("/articles/${article.id}")
+    // produces 없이 ResponseEntity로만 반환 시 프레임워크 설정에 따라 Content-Type 누락 가능
     return ResponseEntity.created(location).body(article)
-    // Content-Type: application/json 명시하지 않음
+}
+
+// 또는 raw HttpServletResponse 사용 시:
+@PostMapping("/raw")
+fun createArticleRaw(response: HttpServletResponse, @RequestBody request: CreateArticleRequest) {
+    val article = articleService.create(request)
+    // Content-Type 헤더 누락
+    response.outputStream.write(objectMapper.writeValueAsBytes(article))
 }
 ```
 
 ✅ Good:
 ```kotlin
-// 요청과 응답 모두 Content-Type 명시
-@PostMapping(
-    value = ["/articles"],
-    consumes = [MediaType.APPLICATION_JSON_VALUE],    // 요청 Content-Type 명시
-    produces = [MediaType.APPLICATION_JSON_VALUE]      // 응답 Content-Type 명시
-)
+// Good — Content-Type 명시
+@PostMapping(produces = [MediaType.APPLICATION_JSON_VALUE])
 fun createArticle(@RequestBody request: CreateArticleRequest): ResponseEntity<Article> {
     val article = articleService.create(request)
     val location = URI.create("/articles/${article.id}")
@@ -508,7 +525,7 @@ fun createArticle(@RequestBody request: CreateArticleRequest): ResponseEntity<Ar
 }
 ```
 
-- 검증 포인트: Writing 모드는 에러 응답 `application/problem+json`만 언급하고 일반 요청/응답 Content-Type 규칙 없음(PARTIAL), Review 모드에 요청/응답 Content-Type 체크 항목 없음(MISSING)
+- 검증 포인트: Spring Boot는 `@RestController` + `produces` 설정으로 자동 처리되나, HTTP 규칙상 응답 본문이 있는 모든 응답에 Content-Type 헤더가 있어야 함. Writing 모드는 에러 응답 `application/problem+json`만 언급하고 일반 요청/응답 Content-Type 규칙 없음(PARTIAL), Review 모드에 요청/응답 Content-Type 체크 항목 없음(MISSING)
 
 ---
 
@@ -580,6 +597,12 @@ fun createArticle(@RequestBody request: Map<String, Any>): ResponseEntity<Articl
 
 ✅ Good:
 ```kotlin
+// 클라이언트 요청 (id 포함)
+// POST /articles
+// { "id": "hack-123", "title": "제목", "content": "내용", "createdAt": "2020-01-01T00:00:00Z" }
+//
+// 서버는 위 요청에서 id, createdAt을 무시하고 서버가 직접 생성함
+
 @PostMapping("/articles")
 fun createArticle(@RequestBody request: CreateArticleRequest): ResponseEntity<Article> {
     // 클라이언트가 id, createdAt, updatedAt을 보내더라도 무시하고 서버가 생성
@@ -769,7 +792,7 @@ fun handleValidation(
 }
 ```
 
-- 검증 포인트: Writing 모드의 에러 응답 템플릿에 `errors` 배열 필드 포함, Review 체크리스트의 "All validation errors returned at once" 항목
+- 검증 포인트: 스킬의 RFC 7807 템플릿에 `errors` 배열 확장 필드가 있으나, 유효성 실패 시 '모든 오류를 한 번에 반환해야 한다'는 명시적 지침이 Writing Mode에 없고 Review 체크리스트에도 "All validation errors returned at once" 항목이 없음(MISSING). TC-3-03이 RFC 7807 구조(3.4-1/3.4-2)를 별도로 커버한다.
 
 ---
 
@@ -887,7 +910,7 @@ data class ArticleResponse(
 // JSON 출력: { "articleId": "123", "userName": "john", "createdAt": "...", "isPublished": true }
 ```
 
-- 검증 포인트: Writing 모드의 JSON Field Naming Rules "Correct example" / "Incorrect example" 비교, Review 체크리스트의 "All fields are camelCase" 항목
+- 검증 포인트: Writing 모드의 JSON Field Naming Rules "Correct example" / "Incorrect example" 비교, Review 체크리스트의 "All fields are camelCase" 항목. 이 케이스는 4.1-2(필드 이름 영소문자로 시작) 규칙도 부분적으로 커버한다. snake_case 예시는 모두 영소문자로 시작하므로 4.1-2 위반 패턴(예: `UserId`) 의 별도 TC가 필요할 수 있다.
 
 ---
 

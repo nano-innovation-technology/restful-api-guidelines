@@ -1,28 +1,28 @@
 ---
 name: restful-api-guidelines
-description: RESTful API 코드 작성 및 리뷰 시 가이드라인을 적용합니다. API 엔드포인트 코드 작성, 컨트롤러/핸들러 구현, API 설계 리뷰 요청 시 자동으로 활성화됩니다.
+description: Applies guidelines when writing or reviewing RESTful API code. Automatically activated when writing API endpoint code, implementing controllers/handlers, or requesting API design review.
 ---
 
 # RESTful API Guidelines Skill
 
-## 트리거 조건
+## Trigger Conditions
 
-다음 상황에서 이 skill을 적용합니다:
-- API 엔드포인트 코드 작성 또는 수정
-- REST 컨트롤러/핸들러 구현
-- API 응답 구조 설계
-- API 코드 리뷰 요청
+Apply this skill in the following situations:
+- Writing or modifying API endpoint code
+- Implementing REST controllers/handlers
+- Designing API response structures
+- API code review requests
 
 ---
 
-## 코드 작성 모드
+## Code Writing Mode
 
-API 코드를 작성할 때 아래 규칙을 준수합니다.
+Follow the rules below when writing API code.
 
-### URL 네이밍 규칙
+### URL Naming Rules
 
 ```
-# 복수형 명사 + kebab-case
+# Plural nouns + kebab-case
 GET    /articles
 POST   /articles
 GET    /articles/{id}
@@ -30,65 +30,66 @@ PUT    /articles/{id}
 PATCH  /articles/{id}
 DELETE /articles/{id}
 
-# 중첩 리소스
+# Nested resources
 GET    /users/{userId}/comments
 
-# 액션 패턴 (CRUD로 표현 불가한 동작)
+# Action pattern (for operations that cannot be expressed as CRUD)
 POST   /articles/{id}:publish
 POST   /orders/{id}:cancel
 POST   /users/{id}:deactivate
 ```
 
-### HTTP 메서드별 상태 코드 매핑
+### HTTP Method to Status Code Mapping
 
-| 메서드 | 성공 코드 | 설명 |
-|--------|-----------|------|
-| GET | 200 OK | 조회 성공 |
-| POST (생성) | 201 Created + Location 헤더 | 리소스 생성 성공 |
-| POST (액션) | 200 OK | 액션 수행 성공 |
-| PUT | 200 OK | 완전 대체 성공 |
-| PATCH | 200 OK | 부분 수정 성공 |
-| DELETE | 204 No Content | 삭제 성공 (본문 없음) |
+| Method | Success Code | Description |
+|--------|-------------|-------------|
+| GET | 200 OK | Retrieval success |
+| POST (create) | 201 Created + Location header | Resource created |
+| POST (action) | 200 OK | Action performed |
+| POST (long-running) | 201 Created + Location header | Long-running task — domain resource created immediately with status field |
+| PUT | 200 OK | Full replacement success |
+| PATCH | 200 OK | Partial update success |
+| DELETE | 204 No Content | Deletion success (no body) |
 
-### 에러 응답 형식 템플릿
+### Error Response Format Template
 
-모든 에러 응답은 RFC 7807/9457 Problem Details 구조를 사용합니다.
+All error responses use RFC 7807/9457 Problem Details structure.
 `Content-Type: application/problem+json`
 
 ```json
 {
   "type": "https://api.example.com/errors/error-type",
-  "title": "에러 유형의 짧은 요약",
+  "title": "Short summary of the error type",
   "status": 400,
-  "detail": "이 요청에 대한 구체적인 에러 설명",
-  "instance": "/요청/경로",
+  "detail": "Specific error description for this request",
+  "instance": "/request/path",
   "errors": [
     {
-      "field": "필드명",
-      "message": "해당 필드의 구체적인 문제"
+      "field": "fieldName",
+      "message": "Specific problem with this field"
     }
   ],
-  "traceId": "요청_추적_ID"
+  "traceId": "request_trace_id"
 }
 ```
 
-**자주 사용하는 에러 type URI:**
+**Commonly used error type URIs:**
 
-| HTTP 상태 | type | 사용 시점 |
-|-----------|------|-----------|
-| 400 | `.../errors/invalid-request` | 요청 형식 오류 |
-| 400 | `.../errors/validation-failed` | 유효성 검사 실패 (errors 배열 포함) |
-| 401 | `.../errors/unauthorized` | 인증 필요 |
-| 403 | `.../errors/forbidden` | 권한 없음 |
-| 404 | `.../errors/resource-not-found` | 리소스 없음 |
-| 409 | `.../errors/conflict` | 중복 또는 충돌 |
-| 429 | `.../errors/too-many-requests` | 속도 제한 초과 |
-| 500 | `.../errors/internal-server-error` | 서버 내부 오류 |
+| HTTP Status | type | When to use |
+|-------------|------|-------------|
+| 400 | `.../errors/invalid-request` | Malformed request |
+| 400 | `.../errors/validation-failed` | Validation failure (include errors array) |
+| 401 | `.../errors/unauthorized` | Authentication required |
+| 403 | `.../errors/forbidden` | Insufficient permissions |
+| 404 | `.../errors/resource-not-found` | Resource not found |
+| 409 | `.../errors/conflict` | Duplicate or conflict |
+| 429 | `.../errors/too-many-requests` | Rate limit exceeded |
+| 500 | `.../errors/internal-server-error` | Internal server error |
 
-### JSON 필드 네이밍 규칙
+### JSON Field Naming Rules
 
 ```json
-// 올바른 예시
+// Correct example
 {
   "id": "123",
   "userId": "456",
@@ -98,18 +99,18 @@ POST   /users/{id}:deactivate
   "status": "PUBLISHED"
 }
 
-// 잘못된 예시 - 절대 금지
+// Incorrect example — strictly prohibited
 {
-  "user_id": "456",       // snake_case 금지
-  "is_active": true,      // snake_case 금지
-  "created_at": "...",    // snake_case 금지
-  "status": "published"   // enum은 UPPER_SNAKE_CASE
+  "user_id": "456",       // snake_case forbidden
+  "is_active": true,      // snake_case forbidden
+  "created_at": "...",    // snake_case forbidden
+  "status": "published"   // enums must be UPPER_SNAKE_CASE
 }
 ```
 
-### 컬렉션/페이지네이션 패턴
+### Collection/Pagination Pattern
 
-**응답 구조 (RFC 5988 Link 헤더 + top-level 배열):**
+**Response structure (RFC 5988 Link header + top-level array):**
 
 ```
 HTTP/1.1 200 OK
@@ -119,12 +120,12 @@ Link: <https://api.example.com/articles?pageSize=20&pageToken=abc>; rel="next",
 X-Total-Count: 100
 
 [
-  { "id": "1", "title": "항목 1" },
-  { "id": "2", "title": "항목 2" }
+  { "id": "1", "title": "Item 1" },
+  { "id": "2", "title": "Item 2" }
 ]
 ```
 
-**요청 파라미터 (camelCase):**
+**Request parameters (camelCase):**
 
 ```
 GET /articles?pageSize=20&pageToken=eyJ...
@@ -133,21 +134,21 @@ GET /articles?status=PUBLISHED&orderBy=createdAt:desc
 GET /articles?orderBy=createdAt:desc,title:asc
 ```
 
-### 표준 리소스 필드
+### Standard Resource Fields
 
-생성/수정 시 서버가 자동으로 관리하는 필드:
+Fields automatically managed by the server on create/update:
 
 ```json
 {
-  "id": "서버 생성, 클라이언트 수정 불가",
-  "createdAt": "RFC 3339, 서버 생성",
-  "updatedAt": "RFC 3339, 서버 자동 갱신"
+  "id": "Server-generated, not modifiable by client",
+  "createdAt": "RFC 3339, server-generated",
+  "updatedAt": "RFC 3339, auto-updated by server"
 }
 ```
 
-### 날짜/시간
+### Date/Time
 
-**서버 응답 (✅ 필수: UTC)**
+**Server response (✅ Required: UTC)**
 ```json
 {
   "createdAt": "2024-01-20T10:00:00Z",
@@ -156,23 +157,54 @@ GET /articles?orderBy=createdAt:desc,title:asc
 }
 ```
 
-**클라이언트 요청 (⚠️ 권장: UTC, 오프셋 허용)**
+**Client request (⚠️ Recommended: UTC, offset allowed)**
 ```json
-{ "scheduledAt": "2024-01-25T00:30:00Z" }         // 권장
-{ "scheduledAt": "2024-01-25T09:30:00+09:00" }     // 허용 → 서버가 UTC 정규화
+{ "scheduledAt": "2024-01-25T00:30:00Z" }         // Recommended
+{ "scheduledAt": "2024-01-25T09:30:00+09:00" }     // Allowed — server normalizes to UTC
 ```
 
-**금지**
+**Prohibited**
 ```json
 {
-  "createdAt": 1705744800000,  // Unix timestamp 금지
-  "createdAt": "2024-01-20"   // 시간 포함해야 함 (날짜만 있는 경우 제외)
+  "createdAt": 1705744800000,  // Unix timestamp forbidden
+  "createdAt": "2024-01-20"   // Must include time (except date-only fields)
 }
 ```
 
-### 속도 제한
+### Authentication
 
-**응답 헤더 (✅ 필수: 양쪽 모두 포함)**
+**Auth header (✅ Required: use Authorization header)**
+
+```
+# Bearer Token
+Authorization: Bearer eyJhbGciOiJSUzI1NiJ9...
+
+# API Key
+Authorization: ApiKey your-api-key-here
+```
+
+**401 vs 403 distinction:**
+
+| Status | Cause | WWW-Authenticate Header |
+|--------|-------|------------------------|
+| 401 | Missing/expired/malformed token | ✅ Required |
+| 403 | Authenticated but insufficient permissions | Not needed |
+
+### Idempotency-Key
+
+Required for POST operations with risk of duplicate execution (payments, orders, etc.):
+
+```
+POST /orders
+Idempotency-Key: a8098c1a-f86e-11da-bd1a-00112444be1e
+```
+
+- On re-request with same key → return existing result as-is (no reprocessing)
+- Key validity period: minimum 24 hours
+
+### Rate Limiting
+
+**Response headers (✅ Required: include both)**
 
 ```
 X-RateLimit-Limit: 100
@@ -182,7 +214,7 @@ RateLimit: limit=100, remaining=99, reset=50
 RateLimit-Policy: 100;w=3600
 ```
 
-**429 응답 (✅ 필수: Retry-After + Problem Details)**
+**429 response (✅ Required: Retry-After + Problem Details)**
 
 ```
 HTTP/1.1 429 Too Many Requests
@@ -198,100 +230,121 @@ RateLimit-Policy: 100;w=3600
 ```json
 {
   "type": "https://api.example.com/errors/too-many-requests",
-  "title": "속도 제한 초과",
+  "title": "Rate limit exceeded",
   "status": 429,
-  "detail": "허용된 요청 한도를 초과했습니다. 50초 후에 다시 시도해 주세요."
+  "detail": "You have exceeded the allowed request limit. Please retry after 50 seconds."
 }
 ```
 
-**클라이언트 재시도 (✅ 필수 / ⚠️ 권장)**
+**Client retry (✅ Required / ⚠️ Recommended)**
 
-- ✅ 필수: 429 수신 시 `Retry-After` 헤더 값만큼 대기 후 재시도
-- ⚠️ 권장: `Retry-After` 없을 시 지수 백오프 + 지터 (`min(60, 1 × 2^(n-1)) + random(0,1)`, n=1부터)
-- 최대 재시도 3~5회, 즉시 재시도 금지
+- ✅ Required: On 429, wait for the `Retry-After` header value before retrying
+- ⚠️ Recommended: If no `Retry-After`, use exponential backoff + jitter (`min(60, 1 × 2^(n-1)) + random(0,1)`, n starting from 1)
+- Maximum 3–5 retries; immediate retry forbidden
 
 ---
 
-## 코드 리뷰 모드
+## Code Review Mode
 
-API 코드 리뷰 요청 시 아래 체크리스트를 기준으로 위반 사항을 식별하고 수정을 제안합니다.
+When reviewing API code, identify violations using the checklist below and suggest fixes.
 
-### 리뷰 체크리스트
+### Review Checklist
 
-#### URL 설계
-- [ ] 경로에 소문자 kebab-case 사용
-- [ ] 리소스 이름이 복수형 명사
-- [ ] 경로에 동사 없음 (액션은 `:action` 패턴 사용)
-- [ ] URL에 파일 확장자 없음
-- [ ] URL 경로에 버전(`/v1/`, `/v2/` 등) 포함하지 않음
+#### URL Design
+- [ ] Lowercase kebab-case used in paths
+- [ ] Resource names are plural nouns
+- [ ] No verbs in paths (actions use `:action` pattern)
+- [ ] No file extensions in URLs
+- [ ] No version in URL path (`/v1/`, `/v2/`, etc.)
 
-#### 버전 관리
-- [ ] API 버전은 URL 경로가 아닌 `X-API-Version` 헤더로 전달
-- [ ] `X-API-Version` 값은 ISO 8601 날짜 형식(`YYYY-MM-DD`) 사용
+#### Versioning
+- [ ] API version delivered via `X-API-Version` header, not URL path
+- [ ] `X-API-Version` value uses ISO 8601 date format (`YYYY-MM-DD`)
 
-#### HTTP 메서드 & 상태 코드
-- [ ] POST 생성 → 201 + Location 헤더
-- [ ] GET, PUT, PATCH 성공 → 200
-- [ ] DELETE 성공 → 204 (본문 없음)
-- [ ] GET 요청이 서버 상태를 변경하지 않음
-- [ ] 오류 상황에 200 반환하지 않음
+#### HTTP Methods & Status Codes
+- [ ] POST create → 201 + Location header
+- [ ] GET, PUT, PATCH success → 200
+- [ ] DELETE success → 204 (no body)
+- [ ] GET requests do not modify server state
+- [ ] 200 not returned for error conditions
 
-#### JSON 응답
-- [ ] 모든 필드가 camelCase
-- [ ] Boolean 필드가 `is`/`has`/`can` 접두사 사용
-- [ ] 날짜/시간이 RFC 3339 형식
-- [ ] 서버 응답의 모든 시간 값이 UTC(`Z`)
-- [ ] 오프셋 입력 시 서버가 UTC로 정규화 (에러 아님)
-- [ ] Enum 값이 UPPER_SNAKE_CASE
-- [ ] null 값 필드가 응답에서 제외됨
+#### JSON Response
+- [ ] All fields are camelCase
+- [ ] Boolean fields use `is`/`has`/`can` prefix
+- [ ] Date/time in RFC 3339 format
+- [ ] All time values in server response are UTC (`Z`)
+- [ ] Offset input is normalized to UTC by server (not an error)
+- [ ] Enum values are UPPER_SNAKE_CASE
+- [ ] Null-valued fields excluded from response
 
-#### 에러 처리
-- [ ] 에러 응답이 RFC 7807/9457 Problem Details 구조 (`type`, `title`, `status`, `detail`)
-- [ ] `Content-Type: application/problem+json` 사용
-- [ ] `type`이 에러 유형 식별 URI
-- [ ] 유효성 검사 실패 시 모든 오류를 한 번에 반환 (`errors` 확장 필드)
-- [ ] 내부 구현 정보(스택 트레이스, DB 오류)가 노출되지 않음
+#### Error Handling
+- [ ] Error responses use RFC 7807/9457 Problem Details structure (`type`, `title`, `status`, `detail`)
+- [ ] `Content-Type: application/problem+json` used
+- [ ] `type` is a URI identifying the error type
+- [ ] All validation errors returned at once (`errors` extension field)
+- [ ] Internal implementation details (stack traces, DB errors) not exposed
 
-#### 컬렉션
-- [ ] 컬렉션 응답 본문이 top-level 배열 (envelope 사용 금지)
-- [ ] 쿼리 파라미터가 camelCase (pageSize, pageToken, orderBy)
-- [ ] 페이지네이션 메타데이터가 `Link` 헤더로 전달 (rel: next, prev, first, last)
-- [ ] 전체 항목 수 제공 시 `X-Total-Count` 헤더 사용
-- [ ] 다음 페이지 없을 때 `Link` 헤더에서 `rel="next"` 제외
+#### Collections
+- [ ] Collection response body is a top-level array (no envelope)
+- [ ] Query parameters are camelCase (pageSize, pageToken, orderBy)
+- [ ] Pagination metadata delivered via `Link` header (rel: next, prev, first, last)
+- [ ] `X-Total-Count` header used when providing total item count
+- [ ] `rel="next"` excluded from `Link` header when no next page
 
-#### 속도 제한
-- [ ] 속도 제한 응답에 `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset` 헤더 포함
-- [ ] 속도 제한 응답에 `RateLimit`, `RateLimit-Policy` 헤더 포함
-- [ ] 429 응답에 `Retry-After` 헤더 포함 (delta-seconds 형식)
-- [ ] 429 응답 본문이 Problem Details 구조 (`type`, `title`, `status`, `detail`)
-- [ ] 429 응답의 `Content-Type`이 `application/problem+json`
-- [ ] 클라이언트 재시도 시 `Retry-After` 값 준수 (즉시 재시도 금지)
+#### Rate Limiting
+- [ ] Rate limit response includes `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset` headers
+- [ ] Rate limit response includes `RateLimit`, `RateLimit-Policy` headers
+- [ ] 429 response includes `Retry-After` header (delta-seconds format)
+- [ ] 429 response body uses Problem Details structure (`type`, `title`, `status`, `detail`)
+- [ ] 429 response `Content-Type` is `application/problem+json`
+- [ ] Client retry respects `Retry-After` value (immediate retry forbidden)
 
-### 위반 사항 보고 형식
+#### Authentication & Security
+- [ ] Auth token delivered via `Authorization` header (query parameter forbidden)
+- [ ] Bearer token: `Authorization: Bearer <token>` format
+- [ ] 401 response includes `WWW-Authenticate` header
+- [ ] 401 (authentication failure) / 403 (authorization failure) properly distinguished
+- [ ] `Idempotency-Key` supported for duplicate-risk POST operations (payments, orders, etc.)
 
-발견된 위반 사항은 다음 형식으로 보고합니다:
+#### Long-Running Tasks
+- [ ] Long-running task returns 201 Created + Location header pointing to domain resource
+- [ ] Domain resource has `status` field (`PENDING`/`IN_PROGRESS`/`COMPLETED`/`FAILED`)
+- [ ] No generic `/operations` endpoint — status tracked on the domain resource itself
+- [ ] `FAILED` status includes RFC 7807 error structure in the resource body
+
+#### Filtering
+- [ ] Range filters use `After`/`Before` suffix (`createdAfter`, `createdBefore`)
+- [ ] Repeated same parameter treated as OR condition
+- [ ] Partial match filter uses `Contains` suffix or `q` parameter
+
+#### Custom Headers
+- [ ] New custom headers do not use `X-` prefix (deprecated per RFC 6648)
+
+### Violation Report Format
+
+Report violations in the following format:
 
 ```
-❌ [위반 규칙] 현재 코드
-   → 수정 제안
+❌ [Violated Rule] Current code
+   → Suggested fix
 
-예시:
+Examples:
 ❌ [URL snake_case] GET /user_profiles
-   → GET /user-profiles 또는 GET /users
+   → GET /user-profiles or GET /users
 
-❌ [POST 201 누락] return ResponseEntity.ok(created)
+❌ [POST 201 missing] return ResponseEntity.ok(created)
    → return ResponseEntity.created(location).body(created)
 
-❌ [에러 구조] return Map.of("message", "Not found")
-   → Problem Details 구조 사용:
-      { "type": ".../errors/resource-not-found", "title": "리소스를 찾을 수 없음",
+❌ [Error structure] return Map.of("message", "Not found")
+   → Use Problem Details structure:
+      { "type": ".../errors/resource-not-found", "title": "Resource not found",
         "status": 404, "detail": "...", "instance": "/path" }
       Content-Type: application/problem+json
 ```
 
 ---
 
-## 코드 예시 참조
+## Code Examples
 
 ### Spring Boot (Java/Kotlin)
 
@@ -343,18 +396,18 @@ class ArticleController {
 }
 ```
 
-### 에러 응답 구조체
+### Error Response Structure
 
 ```kotlin
 // Content-Type: application/problem+json (RFC 7807/9457)
 data class ProblemDetail(
-    val type: String,           // 에러 유형 URI
-    val title: String,          // 에러 유형 요약
-    val status: Int,            // HTTP 상태 코드
-    val detail: String,         // 요청별 구체적 설명
-    val instance: String? = null,  // 요청 경로
-    val errors: List<FieldError>? = null,  // 확장: 필드 수준 오류
-    val traceId: String? = null    // 확장: 요청 추적 ID
+    val type: String,           // Error type URI
+    val title: String,          // Short summary of error type
+    val status: Int,            // HTTP status code
+    val detail: String,         // Request-specific description
+    val instance: String? = null,  // Request path
+    val errors: List<FieldError>? = null,  // Extension: field-level errors
+    val traceId: String? = null    // Extension: request trace ID
 ) {
     data class FieldError(
         val field: String,
@@ -362,20 +415,20 @@ data class ProblemDetail(
     )
 }
 
-// 사용 예시
+// Usage example
 throw ApiException(
     status = HttpStatus.NOT_FOUND,
     type = "https://api.example.com/errors/resource-not-found",
-    title = "리소스를 찾을 수 없음",
-    detail = "요청한 게시글을 찾을 수 없습니다.",
+    title = "Resource not found",
+    detail = "The requested article could not be found.",
     instance = request.requestURI
 )
 ```
 
-### 컬렉션 응답 헬퍼
+### Collection Response Helper
 
 ```kotlin
-// 내부 헬퍼 — HTTP 응답 본문은 List<T>, 메타데이터는 헤더로 전달
+// Internal helper — HTTP response body is List<T>, metadata delivered via headers
 data class PageResult<T>(
     val items: List<T>,
     val totalCount: Long? = null,
@@ -390,5 +443,120 @@ fun <T> buildLinkHeader(result: PageResult<T>, pageSize: Int): String {
     result.prevPageToken?.let { links += "<$base&pageToken=$it>; rel=\"prev\"" }
     links += "<$base>; rel=\"first\""
     return links.joinToString(", ")
+}
+```
+
+### Authentication Handling
+
+```kotlin
+// 401 response — token expired
+return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+    .header("WWW-Authenticate", "Bearer realm=\"api\", error=\"token_expired\"")
+    .contentType(MediaType.parseMediaType("application/problem+json"))
+    .body(ProblemDetail(
+        type = "https://api.example.com/errors/unauthorized",
+        title = "Authentication required",
+        status = 401,
+        detail = "The access token has expired."
+    ))
+
+// 403 response — insufficient permissions
+return ResponseEntity.status(HttpStatus.FORBIDDEN)
+    .contentType(MediaType.parseMediaType("application/problem+json"))
+    .body(ProblemDetail(
+        type = "https://api.example.com/errors/forbidden",
+        title = "Access denied",
+        status = 403,
+        detail = "You do not have permission to access this resource."
+    ))
+```
+
+### Idempotency-Key Handling
+
+```kotlin
+@PostMapping("/orders")
+fun createOrder(
+    @RequestHeader("Idempotency-Key") idempotencyKey: String?,
+    @RequestBody request: CreateOrderRequest
+): ResponseEntity<Order> {
+    // Check for existing result
+    idempotencyKey?.let { key ->
+        idempotencyStore.find(key)?.let { cached ->
+            return ResponseEntity.status(cached.statusCode).body(cached.body)
+        }
+    }
+
+    val order = orderService.create(request)
+    val location = URI.create("/orders/${order.id}")
+
+    // Save result (TTL: 24 hours)
+    idempotencyKey?.let { key ->
+        idempotencyStore.save(key, statusCode = 201, body = order, ttl = Duration.ofHours(24))
+    }
+
+    return ResponseEntity.created(location).body(order)
+}
+```
+
+### Rate Limit Response Header Generation
+
+```kotlin
+fun addRateLimitHeaders(headers: HttpHeaders, limit: Int, remaining: Int, resetAt: Instant) {
+    val resetUnix = resetAt.epochSecond
+    val resetDelta = resetAt.epochSecond - Instant.now().epochSecond
+
+    // Legacy headers
+    headers.set("X-RateLimit-Limit", limit.toString())
+    headers.set("X-RateLimit-Remaining", remaining.toString())
+    headers.set("X-RateLimit-Reset", resetUnix.toString())
+
+    // IETF standard headers
+    headers.set("RateLimit", "limit=$limit, remaining=$remaining, reset=$resetDelta")
+    headers.set("RateLimit-Policy", "$limit;w=3600")
+}
+
+// 429 response
+fun rateLimitExceededResponse(retryAfterSeconds: Long): ResponseEntity<ProblemDetail> {
+    val headers = HttpHeaders()
+    headers.set("Retry-After", retryAfterSeconds.toString())
+    addRateLimitHeaders(headers, limit = 100, remaining = 0, resetAt = Instant.now().plusSeconds(retryAfterSeconds))
+
+    return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+        .headers(headers)
+        .contentType(MediaType.parseMediaType("application/problem+json"))
+        .body(ProblemDetail(
+            type = "https://api.example.com/errors/too-many-requests",
+            title = "Rate limit exceeded",
+            status = 429,
+            detail = "You have exceeded the allowed request limit. Please retry after ${retryAfterSeconds} seconds."
+        ))
+}
+```
+
+### API Version Header Handling
+
+```kotlin
+// Extract version from request
+@GetMapping("/articles")
+fun getArticles(
+    @RequestHeader("X-API-Version", required = false) apiVersion: String?
+): ResponseEntity<List<Article>> {
+    val version = apiVersion ?: "2024-01-20" // Default version
+    val articles = articleService.getArticles(version)
+
+    return ResponseEntity.ok()
+        .header("X-API-Version", version)  // Echo applied version in response
+        .body(articles)
+}
+```
+
+### Deprecation Header Handling
+
+```kotlin
+// Add headers to deprecated endpoints
+fun addDeprecationHeaders(headers: HttpHeaders, sunsetDate: String, successorUrl: String) {
+    headers.set("Deprecation", "true")
+    headers.set("Sunset", sunsetDate)  // e.g. "Sat, 01 Jan 2025 00:00:00 GMT"
+    headers.set("Link", "<$successorUrl>; rel=\"successor-version\"")
 }
 ```

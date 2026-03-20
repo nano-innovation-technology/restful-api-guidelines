@@ -133,6 +133,8 @@ All error responses use RFC 7807/9457 Problem Details structure.
 }
 ```
 
+✅ Required: Field names MUST start with a lowercase letter (a-z) — no UpperCamelCase (e.g., `userId` not `UserId`)
+
 ### Collection/Pagination Pattern
 
 **Response structure (RFC 5988 Link header + top-level array):**

@@ -33,7 +33,7 @@
 | 2.2-5 | ✅필수 | 표준 HTTP 상태 코드를 정확한 의미에 맞게 사용 | COVERED | COVERED | — |
 | 2.2-6 | ✅필수 | 201 Created 응답에 Location 헤더 포함 | COVERED | COVERED | — |
 | 2.2-7 | ❌금지 | 오류 상황에 200 OK 반환 금지 | MISSING | COVERED | Minor |
-| 2.3-1 | ✅필수 | 동일 파라미터 반복으로 배열 값 전달 | MISSING | MISSING | Critical |
+| 2.3-1 | ✅필수 | 동일 파라미터 반복으로 배열 값 전달 | MISSING | PARTIAL | Critical |
 | 2.3-2 | ⚠️권장 | 쿼리 파라미터는 선택적으로 설계 | MISSING | MISSING | Minor |
 | 2.3-3 | ⚠️권장 | 쿼리 파라미터에 민감한 정보 포함 금지 | MISSING | MISSING | Minor |
 | 2.3-4 | ❌금지 | 서버 상태 변경에 쿼리 파라미터 사용 금지 | MISSING | MISSING | Minor |
@@ -137,8 +137,8 @@
 | 상태 | 개수 | 비율 |
 |------|------|------|
 | COVERED | 43 | 60.6% |
-| PARTIAL | 1 | 1.4% |
-| MISSING | 27 | 38.0% |
+| PARTIAL | 2 | 2.8% |
+| MISSING | 26 | 36.6% |
 | **합계** | **71** | **100%** |
 
 ### 전체 커버리지 (Writing + Review 통합)
@@ -146,9 +146,11 @@
 | 상태 | 개수 | 비율 |
 |------|------|------|
 | COVERED | 80 | 56.3% |
-| PARTIAL | 12 | 8.5% |
-| MISSING | 50 | 35.2% |
+| PARTIAL | 13 | 9.2% |
+| MISSING | 49 | 34.5% |
 | **합계** | **142** | **100%** |
+
+\* 전체는 71개 규칙 × 2개 모드(Writing/Review)의 합산 수치입니다.
 
 ---
 
@@ -161,7 +163,7 @@
 | 2.1-5 | URL 경로 세그먼트에 ASCII 영소문자/숫자/하이픈만 허용 | PARTIAL | PARTIAL | kebab-case 언급은 있으나 허용 문자 집합을 명시적으로 제한하지 않음 |
 | 2.2-1 | GET 요청은 서버 상태 변경 안 함 | MISSING | COVERED | Writing 모드에 안전성(safety) 규칙 명시 없음 |
 | 2.2-2 | PUT 요청은 멱등적으로 동작 | PARTIAL | MISSING | Writing 모드 상태코드 표에 "Full replacement" 언급만, Review에 멱등성 체크 없음 |
-| 2.3-1 | 동일 파라미터 반복으로 배열 값 전달 | MISSING | MISSING | 쿼리 파라미터 배열 전달 방식 자체가 스킬에 없음 |
+| 2.3-1 | 동일 파라미터 반복으로 배열 값 전달 | MISSING | PARTIAL | Review 체크리스트의 "Repeated same parameter treated as OR condition" 항목이 의미(OR 조건)를 다루나, 인코딩 방식(반복 파라미터 전달) 자체는 간접적으로만 포함됨 |
 | 2.4-1 | 요청 본문 있을 때 Content-Type 헤더 포함 | PARTIAL | MISSING | 에러 응답의 Content-Type만 언급, 일반 요청 Content-Type 규칙 없음 |
 | 2.4-2 | 응답 본문 있을 때 Content-Type 헤더 포함 | PARTIAL | MISSING | 에러 응답의 Content-Type만 명시, 일반 응답 Content-Type 규칙 없음 |
 | 3.1-1 | 모든 리소스는 고유 id 가짐 | COVERED | MISSING | Review 체크리스트에 리소스 id 필수 항목 없음 |
@@ -243,7 +245,7 @@
 | 5.4-1 | MISSING | URL 경로 버전 금지 규칙이 Writing 모드에 없음 |
 | 5.4-2 | COVERED | X-API-Version 헤더 코드 예시 있음 (ISO 8601 날짜 형식 "2024-01-20") |
 | 5.4-3 | MISSING | 하위 호환성 유지 규칙 없음 |
-| 5.5-1 | COVERED | Deprecation/Sunset/Link 헤더 설정 코드 예시 있음 |
+| 5.5-1 | COVERED | Deprecation/Sunset/Link 헤더 설정 코드 예시 있음. 커버리지 출처: Writing Mode 본문이 아닌 Code Examples 부록의 Kotlin 코드 예시에서 확인됨. |
 | 5.6-1 | COVERED | addRateLimitHeaders 함수에 X-RateLimit-* 헤더 설정 코드 있음 |
 | 5.6-2 | COVERED | Retry-After 헤더 설정 코드 있음 |
 | 5.6-3 | COVERED | 429 응답에 ProblemDetail 구조 사용 코드 있음 |
@@ -276,7 +278,7 @@
 | 2.2-5 | COVERED | 상태 코드 관련 체크리스트 항목 다수 있음 |
 | 2.2-6 | COVERED | "POST create -> 201 + Location header" 체크리스트 항목 |
 | 2.2-7 | COVERED | "200 not returned for error conditions" 체크리스트 항목 |
-| 2.3-1 | MISSING | 동일 파라미터 반복 배열 전달 체크 항목 없음 (5.3-1 필터링에서 OR 조건은 있음) |
+| 2.3-1 | PARTIAL | "Repeated same parameter treated as OR condition" 체크리스트 항목이 존재하나, 이는 의미(OR 조건)를 다루는 것이며 인코딩 방식(동일 파라미터 반복으로 배열 전달) 자체는 간접적으로만 포함됨 |
 | 2.3-2 | MISSING | 쿼리 파라미터 선택적 설계 체크 없음 |
 | 2.3-3 | MISSING | 쿼리 파라미터 민감 정보 체크 없음 |
 | 2.3-4 | MISSING | 서버 상태 변경 쿼리 파라미터 금지 체크 없음 |
@@ -304,7 +306,7 @@
 | 4.2-3 | MISSING | 숫자 JSON number 타입 체크 없음 |
 | 4.2-4 | MISSING | 큰 정수 문자열 반환 체크 없음 |
 | 4.3-1 | COVERED | "Date/time in RFC 3339 format" 체크리스트 항목 |
-| 4.3-2 | COVERED | UTC(Z) 응답 체크리스트 항목에서 간접 포함 |
+| 4.3-2 | COVERED | "All time values in server response are UTC (Z)" 체크리스트 항목이 이 규칙을 직접 커버함 |
 | 4.3-3 | COVERED | "All time values in server response are UTC (Z)" 체크리스트 항목 |
 | 4.3-4 | COVERED | "Offset input is normalized to UTC by server (not an error)" 체크리스트 항목 |
 | 4.3-5 | MISSING | Unix timestamp 금지 체크 항목 없음 |

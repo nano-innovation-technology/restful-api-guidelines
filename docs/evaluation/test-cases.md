@@ -1220,3 +1220,1191 @@ enum class ArticleStatus {
 ```
 
 - 검증 포인트: Writing 모드에 "enums must be UPPER_SNAKE_CASE" 명시 있으나 숫자/약어 사용 금지 bad case 없음(PARTIAL), Review 체크리스트에 Enum 숫자/약어 금지 체크 항목 없음(MISSING)
+
+---
+
+## 섹션 5: 공통 API 패턴
+
+### TC-5-01: 액션 패턴 :action 형태
+
+- 규칙: "✅ **필수**: 액션은 리소스 URL 뒤에 `:action` 형태로 표현한다."
+- 규범 수준: ✅필수
+- 대상 모드: Both
+- 스킬 커버: Writing: COVERED / Review: COVERED
+
+❌ Bad:
+```kotlin
+@RestController
+@RequestMapping("/articles")
+class ArticleController {
+
+    // URL에 동사를 별도 경로로 사용 — 금지
+    @PostMapping("/{id}/publish")
+    fun publishArticle(@PathVariable id: String): ResponseEntity<Article> {
+        val article = articleService.publish(id)
+        return ResponseEntity.ok(article)
+    }
+
+    // 쿼리 파라미터로 액션 지정 — 금지
+    @PostMapping("/{id}")
+    fun performAction(
+        @PathVariable id: String,
+        @RequestParam action: String
+    ): ResponseEntity<Article> {
+        return when (action) {
+            "cancel" -> ResponseEntity.ok(articleService.cancel(id))
+            else -> ResponseEntity.badRequest().build()
+        }
+    }
+}
+```
+
+✅ Good:
+```kotlin
+@RestController
+@RequestMapping("/articles")
+class ArticleController {
+
+    @PostMapping("/{id}:publish")
+    fun publishArticle(@PathVariable id: String): ResponseEntity<Article> {
+        val article = articleService.publish(id)
+        return ResponseEntity.ok(article)
+    }
+
+    @PostMapping("/{id}:cancel")
+    fun cancelArticle(@PathVariable id: String): ResponseEntity<Article> {
+        val article = articleService.cancel(id)
+        return ResponseEntity.ok(article)
+    }
+}
+```
+
+- 검증 포인트: Writing 모드의 "Action pattern" 섹션에 `:publish`, `:cancel`, `:deactivate` 예시, Review 체크리스트의 "No verbs in paths (actions use `:action` pattern)" 항목
+
+---
+
+### TC-5-02: 액션 엔드포인트 POST 메서드
+
+- 규칙: "✅ **필수**: 액션 엔드포인트에는 POST 메서드를 사용한다."
+- 규범 수준: ✅필수
+- 대상 모드: Both
+- 스킬 커버: Writing: COVERED / Review: COVERED
+
+❌ Bad:
+```kotlin
+@RestController
+@RequestMapping("/articles")
+class ArticleController {
+
+    // GET으로 액션 수행 — 금지 (서버 상태 변경)
+    @GetMapping("/{id}:publish")
+    fun publishArticle(@PathVariable id: String): ResponseEntity<Article> {
+        val article = articleService.publish(id)
+        return ResponseEntity.ok(article)
+    }
+
+    // PUT으로 액션 수행 — 부적절
+    @PutMapping("/{id}:cancel")
+    fun cancelArticle(@PathVariable id: String): ResponseEntity<Article> {
+        val article = articleService.cancel(id)
+        return ResponseEntity.ok(article)
+    }
+}
+```
+
+✅ Good:
+```kotlin
+@RestController
+@RequestMapping("/articles")
+class ArticleController {
+
+    @PostMapping("/{id}:publish")
+    fun publishArticle(@PathVariable id: String): ResponseEntity<Article> {
+        val article = articleService.publish(id)
+        return ResponseEntity.ok(article)
+    }
+
+    @PostMapping("/{id}:cancel")
+    fun cancelArticle(@PathVariable id: String): ResponseEntity<Article> {
+        val article = articleService.cancel(id)
+        return ResponseEntity.ok(article)
+    }
+}
+```
+
+- 검증 포인트: Writing 모드의 HTTP Method to Status Code Mapping 표 "POST (action) | 200 OK | Action performed" 및 코드 예시의 `@PostMapping("/{id}:publish")`, Review 체크리스트에서 액션 패턴이 POST 사용하는 것이 URL Design 체크에 포함
+
+---
+
+### TC-5-03: 컬렉션 응답 top-level array
+
+- 규칙: "✅ **필수**: 컬렉션 조회 응답 본문은 리소스 배열(top-level JSON array)을 반환한다."
+- 규범 수준: ✅필수
+- 대상 모드: Both
+- 스킬 커버: Writing: COVERED / Review: COVERED
+
+❌ Bad:
+```kotlin
+@RestController
+@RequestMapping("/articles")
+class ArticleController {
+
+    // envelope 객체로 감싸서 반환 — 금지
+    @GetMapping
+    fun getArticles(): ResponseEntity<Map<String, Any>> {
+        val articles = articleService.findAll()
+        return ResponseEntity.ok(mapOf(
+            "data" to articles,
+            "totalCount" to articles.size,
+            "page" to 1
+        ))
+    }
+}
+
+// 응답:
+// {
+//   "data": [ { "id": "1", ... }, { "id": "2", ... } ],
+//   "totalCount": 2,
+//   "page": 1
+// }
+```
+
+✅ Good:
+```kotlin
+@RestController
+@RequestMapping("/articles")
+class ArticleController {
+
+    @GetMapping
+    fun getArticles(
+        @RequestParam(defaultValue = "20") pageSize: Int,
+        @RequestParam(required = false) pageToken: String?
+    ): ResponseEntity<List<Article>> {
+        val result = articleService.getArticles(pageSize, pageToken)
+        val headers = HttpHeaders()
+        buildLinkHeader(result, pageSize).let { headers.set("Link", it) }
+        result.totalCount?.let { headers.set("X-Total-Count", it.toString()) }
+        return ResponseEntity.ok().headers(headers).body(result.items)
+    }
+}
+
+// 응답:
+// HTTP/1.1 200 OK
+// Link: <https://api.example.com/articles?pageSize=20&pageToken=abc>; rel="next"
+// X-Total-Count: 100
+//
+// [
+//   { "id": "1", "title": "첫 번째 글" },
+//   { "id": "2", "title": "두 번째 글" }
+// ]
+```
+
+- 검증 포인트: Writing 모드의 Collection/Pagination Pattern에 "top-level array" 명시 및 `ResponseEntity<List<Article>>` 코드 예시, Review 체크리스트의 "Collection response body is a top-level array (no envelope)" 항목
+
+---
+
+### TC-5-04: Link 헤더 rel="next" 제외 (다음 페이지 없을 때)
+
+- 규칙: "✅ **필수**: 다음 페이지가 없을 때 `Link` 헤더에서 `rel=\"next\"`를 제외한다."
+- 규범 수준: ✅필수
+- 대상 모드: Both
+- 스킬 커버: Writing: COVERED / Review: COVERED
+
+❌ Bad:
+```kotlin
+// 다음 페이지가 없는데도 rel="next"를 포함 — 금지
+fun <T> buildLinkHeader(result: PageResult<T>, pageSize: Int): String {
+    val base = "https://api.example.com/articles?pageSize=$pageSize"
+    val links = mutableListOf<String>()
+    // nextPageToken이 null인데도 빈 문자열로 next 링크 생성
+    links += "<$base&pageToken=${result.nextPageToken ?: ""}>; rel=\"next\""
+    links += "<$base>; rel=\"first\""
+    return links.joinToString(", ")
+}
+
+// 응답 (마지막 페이지):
+// Link: <https://api.example.com/articles?pageSize=20&pageToken=>; rel="next",
+//       <https://api.example.com/articles?pageSize=20>; rel="first"
+```
+
+✅ Good:
+```kotlin
+fun <T> buildLinkHeader(result: PageResult<T>, pageSize: Int): String {
+    val base = "https://api.example.com/articles?pageSize=$pageSize"
+    val links = mutableListOf<String>()
+    // nextPageToken이 null이면 rel="next" 자체를 생략
+    result.nextPageToken?.let { links += "<$base&pageToken=$it>; rel=\"next\"" }
+    result.prevPageToken?.let { links += "<$base&pageToken=$it>; rel=\"prev\"" }
+    links += "<$base>; rel=\"first\""
+    return links.joinToString(", ")
+}
+
+// 응답 (마지막 페이지) — rel="next" 없음:
+// Link: <https://api.example.com/articles?pageSize=20>; rel="first"
+```
+
+- 검증 포인트: Writing 모드의 `buildLinkHeader` 코드에서 `nextPageToken?.let` 패턴으로 null 시 next 미포함, Review 체크리스트의 "rel=\"next\" excluded from Link header when no next page" 항목
+
+---
+
+### TC-5-05: 페이지네이션 파라미터 camelCase (2.1-6 연계)
+
+- 규칙: "✅ **필수**: 쿼리 파라미터 이름은 camelCase를 사용한다." (2.1-6과 연계)
+- 규범 수준: ✅필수
+- 대상 모드: Both
+- 스킬 커버: Writing: COVERED / Review: COVERED
+
+❌ Bad:
+```
+GET /articles?page_size=20&page_token=abc&order_by=created_at:desc
+GET /articles?PageSize=20&PageToken=abc
+GET /articles?page-size=20&page-token=abc
+```
+
+✅ Good:
+```
+GET /articles?pageSize=20&pageToken=abc
+GET /articles?pageSize=20&page=2
+GET /articles?orderBy=createdAt:desc
+```
+
+- 검증 포인트: Writing 모드의 Collection/Pagination Pattern에 `pageSize`, `pageToken`, `orderBy` 등 camelCase 파라미터 예시 및 "(camelCase)" 명시, Review 체크리스트의 "Query parameters are camelCase (pageSize, pageToken, orderBy)" 항목
+
+---
+
+### TC-5-06: X-Total-Count 헤더
+
+- 규칙: "⚠️ **권장**: 전체 항목 수를 제공할 때 `X-Total-Count` 헤더를 사용한다."
+- 규범 수준: ⚠️권장
+- 대상 모드: Both
+- 스킬 커버: Writing: COVERED / Review: COVERED
+
+❌ Bad:
+```kotlin
+@GetMapping
+fun getArticles(): ResponseEntity<Map<String, Any>> {
+    val articles = articleService.findAll()
+    // 전체 항목 수를 응답 본문에 포함 — envelope 패턴으로 이어짐
+    return ResponseEntity.ok(mapOf(
+        "items" to articles,
+        "totalCount" to articles.size
+    ))
+}
+```
+
+✅ Good:
+```kotlin
+@GetMapping
+fun getArticles(
+    @RequestParam(defaultValue = "20") pageSize: Int,
+    @RequestParam(required = false) pageToken: String?
+): ResponseEntity<List<Article>> {
+    val result = articleService.getArticles(pageSize, pageToken)
+    val headers = HttpHeaders()
+    buildLinkHeader(result, pageSize).let { headers.set("Link", it) }
+    result.totalCount?.let { headers.set("X-Total-Count", it.toString()) }
+    return ResponseEntity.ok().headers(headers).body(result.items)
+}
+
+// 응답:
+// HTTP/1.1 200 OK
+// X-Total-Count: 100
+// Link: <...>; rel="next"
+//
+// [ { "id": "1", ... }, { "id": "2", ... } ]
+```
+
+- 검증 포인트: Writing 모드의 Collection/Pagination Pattern에 `X-Total-Count: 100` 헤더 예시 및 코드에서 `headers.set("X-Total-Count", ...)`, Review 체크리스트의 "X-Total-Count header used when providing total item count" 항목
+
+---
+
+### TC-5-07: 범위 필터 After/Before 접미사
+
+- 규칙: "⚠️ **권장**: 범위 필터(range)에는 `After`/`Before` 접미사를 사용한다."
+- 규범 수준: ⚠️권장
+- 대상 모드: Both
+- 스킬 커버: Writing: MISSING / Review: COVERED
+
+❌ Bad:
+```
+GET /articles?created_from=2024-01-01T00:00:00Z&created_to=2024-02-01T00:00:00Z
+GET /articles?startDate=2024-01-01&endDate=2024-02-01
+GET /articles?minCreatedAt=2024-01-01T00:00:00Z&maxCreatedAt=2024-02-01T00:00:00Z
+```
+
+✅ Good:
+```
+GET /articles?createdAfter=2024-01-01T00:00:00Z
+GET /articles?createdBefore=2024-02-01T00:00:00Z
+GET /articles?createdAfter=2024-01-01T00:00:00Z&createdBefore=2024-02-01T00:00:00Z
+```
+
+- 검증 포인트: Writing 모드에 범위 필터 After/Before 패턴 없음(MISSING), Review 체크리스트의 "Range filters use After/Before suffix (createdAfter, createdBefore)" 항목
+
+---
+
+### TC-5-08: 동일 파라미터 반복 OR 조건
+
+- 규칙: "✅ **필수**: 동일 파라미터 반복은 OR 조건으로 처리한다. 서로 다른 파라미터 간 조합은 AND 조건이다."
+- 규범 수준: ✅필수
+- 대상 모드: Both
+- 스킬 커버: Writing: MISSING / Review: COVERED
+
+❌ Bad:
+```kotlin
+@GetMapping("/articles")
+fun getArticles(
+    @RequestParam(required = false) status: List<String>?
+): ResponseEntity<List<Article>> {
+    // 동일 파라미터 반복을 AND 조건으로 처리 — 금지
+    // GET /articles?status=PUBLISHED&status=DRAFT
+    // → status가 PUBLISHED이면서 동시에 DRAFT인 것만 반환 (논리적으로 불가능)
+    val articles = articleService.findByAllStatuses(status ?: emptyList())
+    return ResponseEntity.ok(articles)
+}
+```
+
+✅ Good:
+```kotlin
+@GetMapping("/articles")
+fun getArticles(
+    @RequestParam(required = false) status: List<String>?,
+    @RequestParam(required = false) authorId: String?
+): ResponseEntity<List<Article>> {
+    // 동일 파라미터 반복 = OR 조건
+    // GET /articles?status=PUBLISHED&status=DRAFT&authorId=123
+    // → (status=PUBLISHED OR status=DRAFT) AND authorId=123
+    val articles = articleService.findByStatusesAndAuthor(
+        statuses = status ?: emptyList(),  // OR 조건
+        authorId = authorId                // AND 조건
+    )
+    return ResponseEntity.ok(articles)
+}
+```
+
+- 검증 포인트: Writing 모드에 OR 조건 규칙 없음(MISSING), Review 체크리스트의 "Repeated same parameter treated as OR condition" 항목
+
+---
+
+### TC-5-09: orderBy 파라미터 형식
+
+- 규칙: "⚠️ **권장**: 정렬은 `orderBy` 파라미터를 사용하며, 필드명과 방향을 조합하여 표현한다."
+- 규범 수준: ⚠️권장
+- 대상 모드: Both
+- 스킬 커버: Writing: COVERED / Review: COVERED
+
+❌ Bad:
+```
+GET /articles?sort=created_at&direction=desc
+GET /articles?sortBy=createdAt&sortDir=desc
+GET /articles?sort=-createdAt
+GET /articles?sort[0][field]=createdAt&sort[0][dir]=desc
+```
+
+✅ Good:
+```
+GET /articles?orderBy=createdAt:desc
+GET /articles?orderBy=title:asc
+GET /articles?orderBy=createdAt:desc,title:asc
+```
+
+- 검증 포인트: Writing 모드의 Collection/Pagination Pattern에 `orderBy=createdAt:desc,title:asc` 예시, Review 체크리스트의 "Query parameters are camelCase (pageSize, pageToken, orderBy)" 항목에서 orderBy 파라미터명 확인
+
+---
+
+### TC-5-10: API 버전 URL 경로 포함 금지
+
+- 규칙: "❌ **금지**: API 버전을 URL 경로에 포함하지 않는다."
+- 규범 수준: ❌금지
+- 대상 모드: Both
+- 스킬 커버: Writing: MISSING / Review: COVERED
+
+❌ Bad:
+```kotlin
+@RestController
+@RequestMapping("/v1/articles")
+class ArticleV1Controller {
+
+    @GetMapping
+    fun getArticles(): ResponseEntity<List<Article>> {
+        return ResponseEntity.ok(articleService.findAll())
+    }
+}
+
+@RestController
+@RequestMapping("/v2/articles")
+class ArticleV2Controller {
+
+    @GetMapping
+    fun getArticles(): ResponseEntity<List<ArticleV2>> {
+        return ResponseEntity.ok(articleService.findAllV2())
+    }
+}
+```
+
+✅ Good:
+```kotlin
+@RestController
+@RequestMapping("/articles")
+class ArticleController {
+
+    @GetMapping
+    fun getArticles(
+        @RequestHeader("X-API-Version", required = false) apiVersion: String?
+    ): ResponseEntity<List<Article>> {
+        val version = apiVersion ?: "2024-01-20"
+        val articles = articleService.getArticles(version)
+        return ResponseEntity.ok()
+            .header("X-API-Version", version)
+            .body(articles)
+    }
+}
+```
+
+- 검증 포인트: Writing 모드에 URL 경로 버전 금지 규칙 명시 없음(MISSING), Review 체크리스트의 "No version in URL path (`/v1/`, `/v2/`, etc.)" 및 "API version delivered via `X-API-Version` header, not URL path" 항목
+
+---
+
+### TC-5-11: X-API-Version 헤더 ISO 8601 날짜 형식
+
+- 규칙: "✅ **필수**: `X-API-Version` 헤더에 ISO 8601 (`YYYY-MM-DD`) 형식의 날짜로 버전을 지정한다."
+- 규범 수준: ✅필수
+- 대상 모드: Both
+- 스킬 커버: Writing: COVERED / Review: COVERED
+
+❌ Bad:
+```
+# 숫자 버전 — 금지
+X-API-Version: 1
+X-API-Version: 2.0
+X-API-Version: v3
+
+# 비표준 날짜 형식 — 금지
+X-API-Version: 20240120
+X-API-Version: Jan 20, 2024
+X-API-Version: 2024/01/20
+```
+
+✅ Good:
+```
+X-API-Version: 2024-01-20
+X-API-Version: 2025-06-15
+```
+
+```kotlin
+@GetMapping("/articles")
+fun getArticles(
+    @RequestHeader("X-API-Version", required = false) apiVersion: String?
+): ResponseEntity<List<Article>> {
+    val version = apiVersion ?: "2024-01-20"  // ISO 8601 날짜 형식
+    val articles = articleService.getArticles(version)
+    return ResponseEntity.ok()
+        .header("X-API-Version", version)
+        .body(articles)
+}
+```
+
+- 검증 포인트: Writing 모드의 API Version Header Handling 코드에서 `"2024-01-20"` 형식 사용, Review 체크리스트의 "X-API-Version value uses ISO 8601 date format (YYYY-MM-DD)" 항목
+
+---
+
+### TC-5-12: Deprecation/Sunset/Link 응답 헤더
+
+- 규칙: "✅ **필수**: Deprecated된 API에는 응답 헤더로 알림을 제공한다."
+- 규범 수준: ✅필수
+- 대상 모드: Both
+- 스킬 커버: Writing: COVERED / Review: MISSING
+
+❌ Bad:
+```kotlin
+@RestController
+@RequestMapping("/users/posts")
+class DeprecatedPostController {
+
+    // Deprecated 엔드포인트이지만 아무런 헤더 없이 응답 — 금지
+    @GetMapping
+    fun getPosts(): ResponseEntity<List<Post>> {
+        return ResponseEntity.ok(postService.findAll())
+    }
+}
+```
+
+✅ Good:
+```kotlin
+@RestController
+@RequestMapping("/users/posts")
+class DeprecatedPostController {
+
+    @GetMapping
+    fun getPosts(): ResponseEntity<List<Post>> {
+        val posts = postService.findAll()
+        val headers = HttpHeaders()
+        addDeprecationHeaders(
+            headers,
+            sunsetDate = "Sat, 01 Jan 2025 00:00:00 GMT",
+            successorUrl = "https://api.example.com/users/articles"
+        )
+        return ResponseEntity.ok().headers(headers).body(posts)
+    }
+}
+
+fun addDeprecationHeaders(headers: HttpHeaders, sunsetDate: String, successorUrl: String) {
+    headers.set("Deprecation", "true")
+    headers.set("Sunset", sunsetDate)
+    headers.set("Link", "<$successorUrl>; rel=\"successor-version\"")
+}
+
+// 응답:
+// HTTP/1.1 200 OK
+// Deprecation: true
+// Sunset: Sat, 01 Jan 2025 00:00:00 GMT
+// Link: <https://api.example.com/users/articles>; rel="successor-version"
+```
+
+- 검증 포인트: Writing 모드의 Deprecation Header Handling 코드에서 Deprecation/Sunset/Link 헤더 설정 예시(COVERED), Review 체크리스트에 Deprecation 헤더 검증 항목 없음(MISSING)
+
+---
+
+### TC-5-13: Deprecation 헤더 형식 검증
+
+- 규칙: "✅ **필수**: Deprecated된 API에는 응답 헤더로 알림을 제공한다." (헤더 형식 검증)
+- 규범 수준: ✅필수
+- 대상 모드: Both
+- 스킬 커버: Writing: COVERED / Review: MISSING
+
+❌ Bad:
+```
+# Deprecation 헤더 형식 오류
+Deprecation: yes
+Sunset: 2025-01-01
+Link: https://api.example.com/users/articles
+```
+
+✅ Good:
+```
+Deprecation: true
+Sunset: Sat, 01 Jan 2025 00:00:00 GMT
+Link: <https://api.example.com/users/articles>; rel="successor-version"
+```
+
+- 검증 포인트: Writing 모드의 `addDeprecationHeaders` 코드에서 `"Deprecation"` 값은 `"true"`, `"Sunset"` 값은 HTTP-date 형식, `"Link"` 값은 `<URL>; rel="successor-version"` 형식. Review 모드에 Deprecation 헤더 형식 체크 없음(MISSING)
+
+---
+
+### TC-5-14: X-RateLimit-* 헤더
+
+- 규칙: "✅ **필수**: 속도 제한이 적용되는 모든 응답에 다음 헤더를 포함한다."
+- 규범 수준: ✅필수
+- 대상 모드: Both
+- 스킬 커버: Writing: COVERED / Review: COVERED
+
+❌ Bad:
+```kotlin
+@GetMapping("/articles")
+fun getArticles(): ResponseEntity<List<Article>> {
+    // 속도 제한 헤더 없이 응답 — 누락
+    return ResponseEntity.ok(articleService.findAll())
+}
+```
+
+✅ Good:
+```kotlin
+@GetMapping("/articles")
+fun getArticles(): ResponseEntity<List<Article>> {
+    val articles = articleService.findAll()
+    val headers = HttpHeaders()
+    addRateLimitHeaders(headers, limit = 100, remaining = 99, resetAt = Instant.now().plusSeconds(3600))
+    return ResponseEntity.ok().headers(headers).body(articles)
+}
+
+fun addRateLimitHeaders(headers: HttpHeaders, limit: Int, remaining: Int, resetAt: Instant) {
+    val resetUnix = resetAt.epochSecond
+    val resetDelta = resetAt.epochSecond - Instant.now().epochSecond
+
+    // Legacy headers
+    headers.set("X-RateLimit-Limit", limit.toString())
+    headers.set("X-RateLimit-Remaining", remaining.toString())
+    headers.set("X-RateLimit-Reset", resetUnix.toString())
+
+    // IETF standard headers
+    headers.set("RateLimit", "limit=$limit, remaining=$remaining, reset=$resetDelta")
+    headers.set("RateLimit-Policy", "$limit;w=3600")
+}
+
+// 응답:
+// HTTP/1.1 200 OK
+// X-RateLimit-Limit: 100
+// X-RateLimit-Remaining: 99
+// X-RateLimit-Reset: 1742342450
+// RateLimit: limit=100, remaining=99, reset=50
+// RateLimit-Policy: 100;w=3600
+```
+
+- 검증 포인트: Writing 모드의 Rate Limiting 섹션에 `addRateLimitHeaders` 함수 코드 예시, Review 체크리스트의 "Rate limit response includes X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset headers" 및 "Rate limit response includes RateLimit, RateLimit-Policy headers" 항목
+
+---
+
+### TC-5-15: 429 Retry-After + Problem Details
+
+- 규칙: "✅ **필수**: 429 응답에 `Retry-After` 헤더를 포함한다." / "✅ **필수**: 429 응답 본문은 RFC 7807 Problem Details 구조를 사용한다."
+- 규범 수준: ✅필수
+- 대상 모드: Both
+- 스킬 커버: Writing: COVERED / Review: COVERED
+
+❌ Bad:
+```kotlin
+// Retry-After 헤더 없음 + 비표준 에러 본문
+fun rateLimitExceeded(): ResponseEntity<Map<String, Any>> {
+    return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+        .contentType(MediaType.APPLICATION_JSON)
+        .body(mapOf(
+            "error" to "Rate limit exceeded",
+            "message" to "Too many requests. Try again later."
+        ))
+}
+```
+
+✅ Good:
+```kotlin
+fun rateLimitExceededResponse(retryAfterSeconds: Long): ResponseEntity<ProblemDetail> {
+    val headers = HttpHeaders()
+    headers.set("Retry-After", retryAfterSeconds.toString())
+    addRateLimitHeaders(headers, limit = 100, remaining = 0, resetAt = Instant.now().plusSeconds(retryAfterSeconds))
+
+    return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+        .headers(headers)
+        .contentType(MediaType.parseMediaType("application/problem+json"))
+        .body(ProblemDetail(
+            type = "https://api.example.com/errors/too-many-requests",
+            title = "Rate limit exceeded",
+            status = 429,
+            detail = "You have exceeded the allowed request limit. Please retry after $retryAfterSeconds seconds."
+        ))
+}
+
+// 응답:
+// HTTP/1.1 429 Too Many Requests
+// Content-Type: application/problem+json
+// Retry-After: 50
+// X-RateLimit-Limit: 100
+// X-RateLimit-Remaining: 0
+// X-RateLimit-Reset: 1742342450
+// RateLimit: limit=100, remaining=0, reset=50
+// RateLimit-Policy: 100;w=3600
+//
+// {
+//   "type": "https://api.example.com/errors/too-many-requests",
+//   "title": "Rate limit exceeded",
+//   "status": 429,
+//   "detail": "You have exceeded the allowed request limit. Please retry after 50 seconds."
+// }
+```
+
+- 검증 포인트: Writing 모드의 Rate Limiting 섹션에 429 응답 코드 예시(Retry-After + ProblemDetail), Review 체크리스트의 "429 response includes Retry-After header (delta-seconds format)" 및 "429 response body uses Problem Details structure" 항목
+
+---
+
+### TC-5-16: 클라이언트 429 수신 시 Retry-After 준수
+
+- 규칙: "✅ **필수**: 클라이언트는 429 응답 수신 시 `Retry-After` 헤더 값만큼 대기한 후 재시도한다."
+- 규범 수준: ✅필수
+- 대상 모드: Both
+- 스킬 커버: Writing: COVERED / Review: COVERED
+
+❌ Bad:
+```kotlin
+// 즉시 재시도 — 금지
+suspend fun fetchArticlesWithRetry(): List<Article> {
+    repeat(10) {
+        val response = httpClient.get("/articles")
+        if (response.status == HttpStatusCode.TooManyRequests) {
+            // Retry-After 무시하고 즉시 재시도
+            continue
+        }
+        return response.body()
+    }
+    throw RuntimeException("Max retries exceeded")
+}
+
+// 고정 간격 재시도 — 금지
+suspend fun fetchArticlesFixedInterval(): List<Article> {
+    repeat(10) {
+        val response = httpClient.get("/articles")
+        if (response.status == HttpStatusCode.TooManyRequests) {
+            delay(1000)  // Retry-After 무시하고 고정 1초 대기
+            continue
+        }
+        return response.body()
+    }
+    throw RuntimeException("Max retries exceeded")
+}
+```
+
+✅ Good:
+```kotlin
+suspend fun fetchArticlesWithRetry(maxRetries: Int = 3): List<Article> {
+    var attempt = 0
+    while (attempt < maxRetries) {
+        val response = httpClient.get("/articles")
+
+        if (response.status == HttpStatusCode.TooManyRequests) {
+            val retryAfter = response.headers["Retry-After"]?.toLongOrNull()
+            if (retryAfter != null) {
+                // Retry-After 헤더 값만큼 대기
+                delay(retryAfter * 1000)
+            } else {
+                // Retry-After 없으면 지수 백오프 + 지터
+                val backoff = minOf(60.0, 1.0 * 2.0.pow(attempt)).toLong()
+                val jitter = Random.nextDouble(0.0, 1.0).toLong()
+                delay((backoff + jitter) * 1000)
+            }
+            attempt++
+            continue
+        }
+
+        return response.body()
+    }
+    throw RuntimeException("Max retries ($maxRetries) exceeded")
+}
+```
+
+- 검증 포인트: Writing 모드의 "Client retry" 섹션에 "On 429, wait for the Retry-After header value before retrying" 명시 및 지수 백오프 공식, Review 체크리스트의 "Client retry respects Retry-After value (immediate retry forbidden)" 항목
+
+---
+
+### TC-5-17: 장기 실행 작업 201 + 도메인 리소스
+
+- 규칙: "✅ **필수**: 장기 실행 작업 요청 시 도메인 리소스를 즉시 생성하고 `201 Created` + `Location` 헤더를 반환한다." / "✅ **필수**: 도메인 리소스에 `status` 필드를 포함하여 처리 상태를 표현한다."
+- 규범 수준: ✅필수
+- 대상 모드: Both
+- 스킬 커버: Writing: COVERED / Review: COVERED
+
+❌ Bad:
+```kotlin
+@PostMapping("/reports")
+fun generateReport(@RequestBody request: GenerateReportRequest): ResponseEntity<Report> {
+    // 작업 완료까지 동기적으로 대기 — 타임아웃 위험
+    val report = reportService.generateSync(request)  // 수 분 소요 가능
+    return ResponseEntity.ok(report)
+}
+
+// 또는 202 Accepted + 별도 operations 리소스 — 금지
+@PostMapping("/reports")
+fun generateReport(@RequestBody request: GenerateReportRequest): ResponseEntity<Map<String, String>> {
+    val operationId = reportService.startAsync(request)
+    return ResponseEntity.accepted().body(mapOf("operationId" to operationId))
+    // GET /operations/{operationId} 로 조회 — 범용 operations 패턴
+}
+```
+
+✅ Good:
+```kotlin
+@PostMapping("/reports")
+fun generateReport(@RequestBody request: GenerateReportRequest): ResponseEntity<Report> {
+    // 도메인 리소스를 즉시 생성하고 비동기 처리 시작
+    val report = reportService.createAndStartAsync(request)
+    val location = URI.create("/reports/${report.id}")
+    return ResponseEntity.created(location).body(report)
+}
+
+// 응답:
+// HTTP/1.1 201 Created
+// Location: /reports/123
+//
+// {
+//   "id": "123",
+//   "status": "PENDING",
+//   "createdAt": "2024-01-20T10:00:00Z",
+//   "updatedAt": "2024-01-20T10:00:00Z"
+// }
+
+// 폴링:
+// GET /reports/123 → { "id": "123", "status": "IN_PROGRESS", ... }
+// GET /reports/123 → { "id": "123", "status": "COMPLETED", "downloadUrl": "...", ... }
+// GET /reports/123 → { "id": "123", "status": "FAILED", "error": { "type": "...", ... } }
+```
+
+- 검증 포인트: Writing 모드의 HTTP Method to Status Code Mapping 표 "POST (long-running) | 201 Created + Location header | Long-running task — domain resource created immediately with status field", Review 체크리스트의 "Long-running task returns 201 Created + Location header" 및 "Domain resource has status field" 항목
+
+---
+
+### TC-5-18: 범용 /operations 리소스 금지
+
+- 규칙: "❌ **금지**: 별도의 범용 `/operations` 리소스를 사용하지 않는다. 도메인 리소스 자체에서 상태를 추적한다."
+- 규범 수준: ❌금지
+- 대상 모드: Both
+- 스킬 커버: Writing: MISSING / Review: COVERED
+
+❌ Bad:
+```kotlin
+// 범용 operations 엔드포인트 — 금지
+@RestController
+@RequestMapping("/operations")
+class OperationController {
+
+    @GetMapping("/{operationId}")
+    fun getOperation(@PathVariable operationId: String): ResponseEntity<Operation> {
+        val operation = operationService.findById(operationId)
+        return ResponseEntity.ok(operation)
+    }
+}
+
+data class Operation(
+    val id: String,
+    val type: String,           // "REPORT_GENERATION", "DATA_IMPORT"
+    val status: String,         // "PENDING", "IN_PROGRESS", "COMPLETED"
+    val resourceId: String?,    // 생성된 리소스 ID
+    val createdAt: Instant
+)
+
+// 클라이언트:
+// POST /reports → 202 Accepted { "operationId": "op-123" }
+// GET /operations/op-123 → { "status": "COMPLETED", "resourceId": "report-456" }
+// GET /reports/report-456 → { ... }
+```
+
+✅ Good:
+```kotlin
+// 도메인 리소스 자체에서 상태 추적
+@RestController
+@RequestMapping("/reports")
+class ReportController {
+
+    @PostMapping
+    fun generateReport(@RequestBody request: GenerateReportRequest): ResponseEntity<Report> {
+        val report = reportService.createAndStartAsync(request)
+        val location = URI.create("/reports/${report.id}")
+        return ResponseEntity.created(location).body(report)
+    }
+
+    @GetMapping("/{id}")
+    fun getReport(@PathVariable id: String): ResponseEntity<Report> {
+        val report = reportService.findById(id)
+        return ResponseEntity.ok(report)
+    }
+}
+
+data class Report(
+    val id: String,
+    val status: ReportStatus,   // PENDING, IN_PROGRESS, COMPLETED, FAILED
+    val downloadUrl: String? = null,
+    val error: ProblemDetail? = null,
+    val createdAt: Instant,
+    val updatedAt: Instant
+)
+
+// 클라이언트:
+// POST /reports → 201 Created { "id": "123", "status": "PENDING" }
+// GET /reports/123 → { "id": "123", "status": "COMPLETED", "downloadUrl": "..." }
+```
+
+- 검증 포인트: Writing 모드에 `/operations` 금지 규칙 명시 없음(MISSING), Review 체크리스트의 "No generic `/operations` endpoint — status tracked on the domain resource itself" 항목
+
+---
+
+## 섹션 6: 인증 및 보안
+
+### TC-6-01: 인증 토큰 Authorization 헤더 사용
+
+- 규칙: "✅ **필수**: 인증 토큰은 `Authorization` 헤더를 사용한다. 쿼리 파라미터나 요청 본문에 포함하지 않는다."
+- 규범 수준: ✅필수
+- 대상 모드: Both
+- 스킬 커버: Writing: COVERED / Review: COVERED
+
+❌ Bad:
+```kotlin
+// 쿼리 파라미터로 토큰 전달 — 금지
+@GetMapping("/articles")
+fun getArticles(@RequestParam token: String): ResponseEntity<List<Article>> {
+    authService.verify(token)
+    return ResponseEntity.ok(articleService.findAll())
+}
+
+// GET /articles?token=eyJhbGciOiJSUzI1NiJ9...
+
+// 요청 본문에 토큰 포함 — 금지
+@PostMapping("/articles:search")
+fun searchArticles(@RequestBody request: SearchRequest): ResponseEntity<List<Article>> {
+    authService.verify(request.token)
+    return ResponseEntity.ok(articleService.search(request))
+}
+```
+
+✅ Good:
+```kotlin
+@RestController
+@RequestMapping("/articles")
+class ArticleController(
+    private val articleService: ArticleService
+) {
+
+    @GetMapping
+    fun getArticles(): ResponseEntity<List<Article>> {
+        // Authorization 헤더는 Spring Security 필터에서 처리
+        return ResponseEntity.ok(articleService.findAll())
+    }
+}
+
+// 요청:
+// GET /articles
+// Authorization: Bearer eyJhbGciOiJSUzI1NiJ9...
+```
+
+- 검증 포인트: Writing 모드의 Authentication 섹션에 "Auth header (Required: use Authorization header)" 및 `Authorization: Bearer ...` / `Authorization: ApiKey ...` 예시, Review 체크리스트의 "Auth token delivered via Authorization header (query parameter forbidden)" 항목
+
+---
+
+### TC-6-02: API Key 쿼리 파라미터 전달 금지
+
+- 규칙: "❌ **금지**: API Key를 쿼리 파라미터로 전달하지 않는다. URL은 서버 로그에 기록될 수 있다."
+- 규범 수준: ❌금지
+- 대상 모드: Both
+- 스킬 커버: Writing: MISSING / Review: COVERED
+
+❌ Bad:
+```
+GET /articles?apiKey=secret-key-12345
+GET /articles?api_key=secret-key-12345
+GET /articles?key=secret-key-12345
+```
+
+```kotlin
+@GetMapping("/articles")
+fun getArticles(@RequestParam apiKey: String): ResponseEntity<List<Article>> {
+    // URL 쿼리 파라미터로 API Key 수신 — 금지
+    // 서버 로그, 브라우저 히스토리, 프록시 로그 등에 노출 위험
+    apiKeyService.verify(apiKey)
+    return ResponseEntity.ok(articleService.findAll())
+}
+```
+
+✅ Good:
+```
+GET /articles
+Authorization: ApiKey secret-key-12345
+```
+
+```kotlin
+@GetMapping("/articles")
+fun getArticles(
+    @RequestHeader("Authorization") authorization: String
+): ResponseEntity<List<Article>> {
+    // Authorization 헤더에서 API Key 추출
+    val apiKey = authorization.removePrefix("ApiKey ").trim()
+    apiKeyService.verify(apiKey)
+    return ResponseEntity.ok(articleService.findAll())
+}
+```
+
+- 검증 포인트: Writing 모드에 API Key 쿼리 파라미터 전달 금지 명시 없음(MISSING), Review 체크리스트의 "Auth token delivered via Authorization header (query parameter forbidden)" 항목
+
+---
+
+### TC-6-03: 401 응답에 WWW-Authenticate 헤더
+
+- 규칙: "✅ **필수**: 401 응답에는 `WWW-Authenticate` 헤더를 포함한다."
+- 규범 수준: ✅필수
+- 대상 모드: Both
+- 스킬 커버: Writing: COVERED / Review: COVERED
+
+❌ Bad:
+```kotlin
+// WWW-Authenticate 헤더 없이 401 반환 — 금지
+@ExceptionHandler(AuthenticationException::class)
+fun handleAuthError(ex: AuthenticationException, request: HttpServletRequest): ResponseEntity<ProblemDetail> {
+    return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+        .contentType(MediaType.parseMediaType("application/problem+json"))
+        .body(ProblemDetail(
+            type = "https://api.example.com/errors/unauthorized",
+            title = "Authentication required",
+            status = 401,
+            detail = ex.message ?: "Authentication is required.",
+            instance = request.requestURI
+        ))
+}
+```
+
+✅ Good:
+```kotlin
+@ExceptionHandler(AuthenticationException::class)
+fun handleAuthError(ex: AuthenticationException, request: HttpServletRequest): ResponseEntity<ProblemDetail> {
+    return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+        .header("WWW-Authenticate", "Bearer realm=\"api\", error=\"token_expired\"")
+        .contentType(MediaType.parseMediaType("application/problem+json"))
+        .body(ProblemDetail(
+            type = "https://api.example.com/errors/unauthorized",
+            title = "Authentication required",
+            status = 401,
+            detail = ex.message ?: "The access token has expired.",
+            instance = request.requestURI
+        ))
+}
+```
+
+- 검증 포인트: Writing 모드의 Authentication Handling 코드에서 `.header("WWW-Authenticate", "Bearer realm=\"api\", error=\"token_expired\"")` 예시, Review 체크리스트의 "401 response includes WWW-Authenticate header" 항목
+
+---
+
+### TC-6-04: 401 vs 403 구분
+
+- 규칙: "✅ **필수**: 401(인증 실패) / 403(인가 실패)을 정확히 구분한다."
+- 규범 수준: ✅필수
+- 대상 모드: Both
+- 스킬 커버: Writing: COVERED / Review: COVERED
+
+❌ Bad:
+```kotlin
+// 인증 실패와 인가 실패를 모두 403으로 반환 — 잘못된 구분
+@ExceptionHandler(SecurityException::class)
+fun handleSecurity(ex: SecurityException): ResponseEntity<ProblemDetail> {
+    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+        .contentType(MediaType.parseMediaType("application/problem+json"))
+        .body(ProblemDetail(
+            type = "https://api.example.com/errors/forbidden",
+            title = "Access denied",
+            status = 403,
+            detail = ex.message ?: "Access denied."
+        ))
+}
+```
+
+✅ Good:
+```kotlin
+// 401 — 인증 실패 (토큰 없음, 만료, 형식 오류)
+@ExceptionHandler(AuthenticationException::class)
+fun handleAuthenticationFailure(
+    ex: AuthenticationException,
+    request: HttpServletRequest
+): ResponseEntity<ProblemDetail> {
+    return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+        .header("WWW-Authenticate", "Bearer realm=\"api\", error=\"token_expired\"")
+        .contentType(MediaType.parseMediaType("application/problem+json"))
+        .body(ProblemDetail(
+            type = "https://api.example.com/errors/unauthorized",
+            title = "Authentication required",
+            status = 401,
+            detail = "The access token has expired.",
+            instance = request.requestURI
+        ))
+}
+
+// 403 — 인가 실패 (인증은 됐지만 권한 없음)
+@ExceptionHandler(AccessDeniedException::class)
+fun handleAuthorizationFailure(
+    ex: AccessDeniedException,
+    request: HttpServletRequest
+): ResponseEntity<ProblemDetail> {
+    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+        .contentType(MediaType.parseMediaType("application/problem+json"))
+        .body(ProblemDetail(
+            type = "https://api.example.com/errors/forbidden",
+            title = "Access denied",
+            status = 403,
+            detail = "You do not have permission to access this resource.",
+            instance = request.requestURI
+        ))
+}
+```
+
+- 검증 포인트: Writing 모드의 Authentication 섹션 401 vs 403 구분 표 및 코드 예시, Review 체크리스트의 "401 (authentication failure) / 403 (authorization failure) properly distinguished" 항목
+
+---
+
+### TC-6-05: Idempotency-Key 지원
+
+- 규칙: "✅ **필수**: 중복 실행 위험이 있는 POST 엔드포인트는 `Idempotency-Key` 헤더를 지원한다."
+- 규범 수준: ✅필수
+- 대상 모드: Both
+- 스킬 커버: Writing: COVERED / Review: COVERED
+
+❌ Bad:
+```kotlin
+// 결제 API에 Idempotency-Key 미지원 — 금지
+@PostMapping("/payments")
+fun createPayment(@RequestBody request: CreatePaymentRequest): ResponseEntity<Payment> {
+    // 네트워크 오류 후 클라이언트가 재시도하면 중복 결제 발생 가능
+    val payment = paymentService.create(request)
+    val location = URI.create("/payments/${payment.id}")
+    return ResponseEntity.created(location).body(payment)
+}
+```
+
+✅ Good:
+```kotlin
+@PostMapping("/payments")
+fun createPayment(
+    @RequestHeader("Idempotency-Key") idempotencyKey: String?,
+    @RequestBody request: CreatePaymentRequest
+): ResponseEntity<Payment> {
+    // 기존 결과 확인
+    idempotencyKey?.let { key ->
+        idempotencyStore.find(key)?.let { cached ->
+            return ResponseEntity.status(cached.statusCode).body(cached.body)
+        }
+    }
+
+    val payment = paymentService.create(request)
+    val location = URI.create("/payments/${payment.id}")
+
+    // 결과 저장 (TTL: 24시간)
+    idempotencyKey?.let { key ->
+        idempotencyStore.save(key, statusCode = 201, body = payment, ttl = Duration.ofHours(24))
+    }
+
+    return ResponseEntity.created(location).body(payment)
+}
+
+// 요청:
+// POST /payments
+// Idempotency-Key: a8098c1a-f86e-11da-bd1a-00112444be1e
+// Content-Type: application/json
+//
+// { "amount": 50000, "currency": "KRW", "recipientId": "user-456" }
+```
+
+- 검증 포인트: Writing 모드의 Idempotency-Key Handling 코드에서 `@RequestHeader("Idempotency-Key")` 처리 및 캐시 로직, Review 체크리스트의 "Idempotency-Key supported for duplicate-risk POST operations (payments, orders, etc.)" 항목
+
+---
+
+### TC-6-06: Idempotency-Key UUID v4
+
+- 규칙: "✅ **필수**: `Idempotency-Key` 값은 클라이언트가 생성한 UUID v4를 사용한다."
+- 규범 수준: ✅필수
+- 대상 모드: Both
+- 스킬 커버: Writing: PARTIAL / Review: MISSING
+
+❌ Bad:
+```
+# 순차적 정수 — 금지 (충돌 위험)
+Idempotency-Key: 1
+Idempotency-Key: 2
+
+# 짧은 문자열 — 금지 (충돌 위험)
+Idempotency-Key: order-123
+
+# 타임스탬프 — 금지 (충돌 위험)
+Idempotency-Key: 1705744800000
+
+# UUID v1 (MAC 주소 기반) — 부적절
+Idempotency-Key: 6ba7b810-9dad-11d1-80b4-00c04fd430c8
+```
+
+✅ Good:
+```
+# UUID v4 (랜덤 기반)
+Idempotency-Key: a8098c1a-f86e-11da-bd1a-00112444be1e
+Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
+```
+
+```kotlin
+// 클라이언트 코드
+val idempotencyKey = UUID.randomUUID().toString()  // UUID v4 생성
+
+val response = httpClient.post("/orders") {
+    header("Idempotency-Key", idempotencyKey)
+    contentType(ContentType.Application.Json)
+    setBody(CreateOrderRequest(productId = "123", quantity = 2))
+}
+```
+
+- 검증 포인트: Writing 모드의 Idempotency-Key 코드 예시에 UUID 형태 값(`a8098c1a-f86e-11da-bd1a-00112444be1e`) 있으나 "UUID v4" 명시 없음(PARTIAL), Review 체크리스트에 UUID v4 검증 항목 없음(MISSING)

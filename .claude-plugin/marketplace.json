@@ -1,0 +1,21 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "engineering-guidelines",
+  "owner": {
+    "name": "ppzxc",
+    "email": "cjh8487@naver.com",
+    "url": "https://ppzxc.github.io"
+  },
+  "metadata": {
+    "description": "Engineering guidelines and best practices for software development",
+    "version": "0.0.1"
+  },
+  "plugins": [
+    {
+      "name": "restful-api-guidelines",
+      "source": "./plugins/restful-api-guidelines",
+      "description": "RESTful API design guidelines — URL structure, HTTP methods, status codes, JSON format, error responses, versioning, and headers",
+      "version": "0.0.1"
+    }
+  ]
+}

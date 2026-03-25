@@ -12,8 +12,8 @@
   },
   "plugins": [
     {
-      "name": "restful-api-guidelines",
-      "source": "./plugins/restful-api-guidelines",
+      "name": "api",
+      "source": "./plugins/api",
       "description": "RESTful API design guidelines — URL structure, HTTP methods, status codes, JSON format, error responses, versioning, and headers",
       "version": "0.0.1"
     }

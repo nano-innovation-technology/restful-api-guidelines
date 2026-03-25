@@ -1,14 +1,16 @@
 # engineering-guidelines
 
-소프트웨어 개발에 필요한 엔지니어링 가이드라인 모음 Claude Code 마켓플레이스입니다.
+> [한국어](README.ko.md)
 
-## 플러그인 목록
+A collection of engineering guidelines for software development, as a Claude Code marketplace.
 
-| 플러그인 | 설명 |
+## Plugins
+
+| Plugin | Description |
 |--------|-------------|
-| [restful-api-guidelines](./plugins/restful-api-guidelines) | RESTful API 설계 가이드라인 — URL 구조, HTTP 메서드, 상태 코드, JSON 형식, 에러 응답, 버전 관리, 헤더 |
+| [restful-api-guidelines](./plugins/restful-api-guidelines) | RESTful API design guidelines — URL structure, HTTP methods, status codes, JSON format, error responses, versioning, headers |
 
-## 마켓플레이스 등록
+## Marketplace Registration
 
 ```bash
 claude plugin marketplace add https://github.com/ppzxc/engineering-guidelines.git

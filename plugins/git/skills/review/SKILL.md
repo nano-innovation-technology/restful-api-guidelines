@@ -1,10 +1,9 @@
 ---
-name: git-review
-description: Use when the user wants to review a GitHub PR — /git-review, "PR 리뷰", "코드 리뷰", or any request to review and submit feedback on a pull request
-user_invocable: true
+description: Use when the user wants to review a GitHub PR — /git:review, "PR 리뷰", "코드 리뷰", or any request to review and submit feedback on a pull request
+user-invocable: true
 ---
 
-# git-review — PR Code Review
+# review — PR Code Review
 
 Analyze PR diff → detect languages → load language-specific reviewer skills → display review results → submit via `gh pr review` after user confirmation.
 
@@ -131,8 +130,8 @@ gh pr review <PR_NUMBER> \
 ## Usage
 
 ```
-/git-review
-/git-review 42
+/git:review
+/git:review 42
 PR 리뷰해줘
 코드 리뷰
 ```

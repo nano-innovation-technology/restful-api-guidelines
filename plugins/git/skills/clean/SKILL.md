@@ -1,10 +1,9 @@
 ---
-name: git-clean
-description: Use when the user wants to complete the full PR workflow — /git-clean, "PR 완료", "PR 전체 흐름", "worktree 정리", or any request to commit, push, review, merge, and cleanup in sequence
-user_invocable: true
+description: Use when the user wants to complete the full PR workflow — /git:clean, "PR 완료", "PR 전체 흐름", "worktree 정리", or any request to commit, push, review, merge, and cleanup in sequence
+user-invocable: true
 ---
 
-# git-clean — Full PR Lifecycle + Cleanup
+# clean — Full PR Lifecycle + Cleanup
 
 commit → PR → review → issue creation → merge → worktree cleanup을 순차 실행한다.
 
@@ -40,7 +39,7 @@ Assess current state and determine which steps are needed.
 
 ### Step 1. Commit (if uncommitted changes exist)
 
-If uncommitted changes exist, execute the **git-commit** skill.
+If uncommitted changes exist, execute the **git:commit** skill.
 
 Skip this step if there are no changes.
 
@@ -56,7 +55,7 @@ Skip this step if there are no changes.
 
 ### Step 2. Create PR (if no open PR exists)
 
-If no open PR exists for the branch, execute the **git-pr** skill.
+If no open PR exists for the branch, execute the **git:pull-request** skill.
 
 Skip this step if a PR already exists.
 
@@ -72,7 +71,7 @@ Skip this step if a PR already exists.
 
 ### Step 3. PR Review
 
-Execute the **git-review** skill.
+Execute the **git:review** skill.
 
 - **Normal mode:** confirm before proceeding
   ```
@@ -111,7 +110,7 @@ EOF
 
 ### Step 4. Merge PR
 
-Execute the **git-merge** skill.
+Execute the **git:merge** skill.
 
 **Always requires confirmation regardless of auto mode** (merge is hard to reverse).
 
@@ -165,17 +164,17 @@ PR workflow complete
 | Situation | Action |
 |-----------|--------|
 | Error in any step | Display error and ask user whether to continue |
-| CI failing | Handled by git-merge warning behavior |
+| CI failing | Handled by merge warning behavior |
 | No worktree | Skip worktree removal in Step 5, perform branch cleanup only |
 | Issue creation failure | Print warning and continue (non-blocking) |
 
 ## Usage
 
 ```
-/git-clean
-/git-clean 42
-/git-clean auto
-/git-clean auto 42
+/git:clean
+/git:clean 42
+/git:clean auto
+/git:clean auto 42
 PR 완료해줘
 PR 전체 흐름 실행
 worktree 정리해줘

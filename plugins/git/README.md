@@ -8,11 +8,11 @@ A collection of safe, opinionated git workflow skills for Claude Code.
 
 | Skill | Slash Command | Description |
 |-------|---------------|-------------|
-| git-commit | `/git-commit` | Safe staging and committing with Conventional Commits |
-| git-pr | `/git-pr` | Push branch and create a GitHub PR |
-| git-review | `/git-review` | Analyze PR diff and submit a code review |
-| git-merge | `/git-merge` | Squash-merge a PR safely |
-| git-clean | `/git-clean` | Full PR lifecycle: commit → PR → review → merge → cleanup |
+| commit | `/git:commit` | Safe staging and committing with Conventional Commits |
+| pull-request | `/git:pull-request` | Push branch and create a GitHub PR |
+| review | `/git:review` | Analyze PR diff and submit a code review |
+| merge | `/git:merge` | Squash-merge a PR safely |
+| clean | `/git:clean` | Full PR lifecycle: commit → PR → review → merge → cleanup |
 
 ## Safety Philosophy
 
@@ -27,16 +27,16 @@ All skills enforce:
 
 ## Skill Relationships
 
-`git-clean` is an orchestrator that delegates to the other skills in sequence:
+`clean` is an orchestrator that delegates to the other skills in sequence:
 
 ```
-git-clean
-  ├─ Step 1: git-commit    (if uncommitted changes exist)
-  ├─ Step 2: git-pr        (if no open PR exists)
-  ├─ Step 3: git-review
+clean
+  ├─ Step 1: commit       (if uncommitted changes exist)
+  ├─ Step 2: pull-request (if no open PR exists)
+  ├─ Step 3: review
   ├─ Step 3.5: Issue creation (if review items exist)
-  ├─ Step 4: git-merge     (always requires confirmation)
-  └─ Step 5: Cleanup       (always requires confirmation, inline)
+  ├─ Step 4: merge        (always requires confirmation)
+  └─ Step 5: Cleanup      (always requires confirmation, inline)
 ```
 
 Steps 4 and 5 always require explicit confirmation regardless of auto mode.
@@ -45,11 +45,11 @@ Steps 4 and 5 always require explicit confirmation regardless of auto mode.
 
 Skills automatically adapt to project conventions:
 
-- **git-commit** — reads `git log` history to match the project's existing commit style
-- **git-pr** — detects the repository's default branch via `gh repo view` instead of hardcoding `main`
-- **git-review** — detects languages in the PR diff, loads matching language-specific reviewer skills, and falls back to general best practices when no reviewer skill is available
-- **git-merge** — detects the default branch dynamically
-- **git-clean** — full PR lifecycle orchestrator; preserves Claude Code local settings (`.claude/settings.local.json`) during worktree removal; auto-creates GitHub Issues from review items
+- **commit** — reads `git log` history to match the project's existing commit style
+- **pull-request** — detects the repository's default branch via `gh repo view` instead of hardcoding `main`
+- **review** — detects languages in the PR diff, loads matching language-specific reviewer skills, and falls back to general best practices when no reviewer skill is available
+- **merge** — detects the default branch dynamically
+- **clean** — full PR lifecycle orchestrator; preserves Claude Code local settings (`.claude/settings.local.json`) during worktree removal; auto-creates GitHub Issues from review items
 
 ## Installation
 

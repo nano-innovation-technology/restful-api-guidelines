@@ -1,10 +1,9 @@
 ---
-name: git-commit
-description: Use when the user wants to commit changes — /git-commit, "커밋", "변경사항 커밋", or any request to stage and commit local changes
-user_invocable: true
+description: Use when the user wants to commit changes — /git:commit, "커밋", "변경사항 커밋", or any request to stage and commit local changes
+user-invocable: true
 ---
 
-# git-commit — Safe Commit
+# commit — Safe Commit
 
 Stage specific files and commit with a Conventional Commits message after user confirmation.
 
@@ -87,7 +86,7 @@ EOF
 ## Usage
 
 ```
-/git-commit
+/git:commit
 commit changes
 커밋해줘
 변경사항 커밋

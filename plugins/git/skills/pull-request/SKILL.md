@@ -1,10 +1,9 @@
 ---
-name: git-pr
-description: Use when the user wants to push changes and create a GitHub PR — /git-pr, "PR 만들어", "PR 생성", "push하고 PR", or any request to open a pull request
-user_invocable: true
+description: Use when the user wants to push changes and create a GitHub PR — /git:pull-request, "PR 만들어", "PR 생성", "push하고 PR", or any request to open a pull request
+user-invocable: true
 ---
 
-# git-pr — Create Pull Request
+# pull-request — Create Pull Request
 
 Push a feature branch and create a GitHub PR after user confirmation.
 
@@ -133,7 +132,7 @@ Output the PR URL.
 ## Usage
 
 ```
-/git-pr
+/git:pull-request
 PR 만들어줘
 push하고 PR 생성해
 ```

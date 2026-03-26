@@ -10,7 +10,7 @@ A collection of safe, opinionated git workflow skills for Claude Code.
 |-------|---------------|-------------|
 | git-commit | `/git-commit` | Safe staging and committing with Conventional Commits |
 | git-pr | `/git-pr` | Push branch and create a GitHub PR |
-| git-pr-review | `/git-pr-review` | Analyze PR diff and submit a code review |
+| git-review | `/git-review` | Analyze PR diff and submit a code review |
 | git-merge-pr | `/git-merge-pr` | Squash-merge a PR safely |
 | git-pr-done | `/git-pr-done` | Full PR lifecycle: commit → PR → review → merge → cleanup |
 | git-cleanup | `/git-cleanup` | Remove worktree, delete local branches, prune remotes |
@@ -34,7 +34,7 @@ All skills enforce:
 git-pr-done
   ├─ Step 1: git-commit    (if uncommitted changes exist)
   ├─ Step 2: git-pr        (if no open PR exists)
-  ├─ Step 3: git-pr-review
+  ├─ Step 3: git-review
   ├─ Step 4: git-merge-pr  (always requires confirmation)
   └─ Step 5: git-cleanup   (always requires confirmation)
 ```
@@ -47,7 +47,7 @@ Skills automatically adapt to project conventions:
 
 - **git-commit** — reads `git log` history to match the project's existing commit style
 - **git-pr** — detects the repository's default branch via `gh repo view` instead of hardcoding `main`
-- **git-pr-review** — reads `CLAUDE.md` or similar project-rules files if present; otherwise reviews against general best practices
+- **git-review** — detects languages in the PR diff, loads matching language-specific reviewer skills, and falls back to general best practices when no reviewer skill is available
 - **git-merge-pr** — detects the default branch dynamically
 - **git-cleanup** — preserves Claude Code local settings (`.claude/settings.local.json`) during worktree removal
 

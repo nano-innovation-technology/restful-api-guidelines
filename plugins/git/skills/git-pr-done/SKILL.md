@@ -75,7 +75,7 @@ Skip this step if a PR already exists.
 
 ### Step 3. PR Review
 
-Execute the **git-pr-review** skill.
+Execute the **git-review** skill.
 
 - **Normal mode:** confirm before proceeding
   ```

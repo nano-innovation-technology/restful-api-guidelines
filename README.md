@@ -8,7 +8,8 @@ A collection of engineering guidelines for software development, as a Claude Cod
 
 | Plugin | Description |
 |--------|-------------|
-| [restful-api-guidelines](./plugins/restful-api-guidelines) | RESTful API design guidelines — URL structure, HTTP methods, status codes, JSON format, error responses, versioning, headers |
+| [api](./plugins/api) | RESTful API design guidelines — URL structure, HTTP methods, status codes, JSON format, error responses, versioning, headers |
+| [git](./plugins/git) | Git workflow skills — safe commit, PR creation, PR review, squash merge, full PR lifecycle orchestration, and worktree cleanup |
 
 ## Marketplace Registration
 

@@ -1,10 +1,10 @@
 ---
-name: git-merge-pr
-description: Use when the user wants to squash-merge a GitHub PR — /git-merge-pr, "PR 머지", "squash merge", or any request to merge a pull request into main
+name: git-merge
+description: Use when the user wants to squash-merge a GitHub PR — /git-merge, "PR 머지", "squash merge", or any request to merge a pull request into main
 user_invocable: true
 ---
 
-# git-merge-pr — PR Squash Merge
+# git-merge — PR Squash Merge
 
 Check PR status → user confirmation → squash merge → delete remote and local branches.
 
@@ -107,8 +107,8 @@ git branch -d <FEATURE_BRANCH> 2>/dev/null || true
 ## Usage
 
 ```
-/git-merge-pr
-/git-merge-pr 42
+/git-merge
+/git-merge 42
 PR 머지해줘
 squash merge
 ```

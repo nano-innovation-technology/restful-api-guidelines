@@ -1,0 +1,10 @@
+{
+  "name": "docs",
+  "version": "0.0.1",
+  "description": "Documentation decision records skills — ADR (Nygard format) and MADR (Markdown Architectural Decision Records 3.x) for capturing and tracking architecture decisions",
+  "author": {
+    "name": "ppzxc",
+    "email": "cjh8487@naver.com",
+    "url": "https://ppzxc.github.io"
+  }
+}

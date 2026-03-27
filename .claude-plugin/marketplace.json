@@ -16,6 +16,12 @@
       "source": "./plugins/api",
       "description": "RESTful API design guidelines — URL structure, HTTP methods, status codes, JSON format, error responses, versioning, and headers",
       "version": "0.0.1"
+    },
+    {
+      "name": "git",
+      "source": "./plugins/git",
+      "description": "Git workflow skills — safe commit, PR creation, PR review, squash merge, full PR lifecycle orchestration, and worktree cleanup",
+      "version": "0.0.1"
     }
   ]
 }

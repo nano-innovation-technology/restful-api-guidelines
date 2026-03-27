@@ -1,6 +1,6 @@
 {
   "name": "git",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Git workflow skills — safe commit, PR creation, PR review, squash merge, full PR lifecycle orchestration, and worktree cleanup",
   "author": {
     "name": "ppzxc",

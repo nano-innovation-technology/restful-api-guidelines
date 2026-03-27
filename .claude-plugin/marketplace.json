@@ -20,8 +20,8 @@
     {
       "name": "git",
       "source": "./plugins/git",
-      "description": "Git workflow skills — safe commit, PR creation, PR review, squash merge, full PR lifecycle orchestration, and worktree cleanup",
-      "version": "0.0.1"
+      "description": "Git workflow skills — safe commit, PR creation, PR review, squash merge, issue creation, full PR lifecycle orchestration, and worktree cleanup",
+      "version": "0.0.3"
     }
   ]
 }

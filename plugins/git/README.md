@@ -12,6 +12,7 @@ A collection of safe, opinionated git workflow skills for Claude Code.
 | pull-request | `/git:pull-request` | Push branch and create a GitHub PR |
 | review | `/git:review` | Analyze PR diff and submit a code review |
 | merge | `/git:merge` | Squash-merge a PR safely |
+| issue | `/git:issue` | Create a GitHub Issue with type-specific templates |
 | clean | `/git:clean` | Full PR lifecycle: commit → PR → review → merge → cleanup |
 
 ## Safety Philosophy
@@ -34,7 +35,7 @@ clean
   ├─ Step 1: commit       (if uncommitted changes exist)
   ├─ Step 2: pull-request (if no open PR exists)
   ├─ Step 3: review
-  ├─ Step 3.5: Issue creation (if review items exist)
+  ├─ Step 3.5: issue      (if review items exist)
   ├─ Step 4: merge        (always requires confirmation)
   └─ Step 5: Cleanup      (always requires confirmation, inline)
 ```
@@ -49,7 +50,8 @@ Skills automatically adapt to project conventions:
 - **pull-request** — detects the repository's default branch via `gh repo view` instead of hardcoding `main`
 - **review** — detects languages in the PR diff, loads matching language-specific reviewer skills, and falls back to general best practices when no reviewer skill is available
 - **merge** — detects the default branch dynamically
-- **clean** — full PR lifecycle orchestrator; preserves Claude Code local settings (`.claude/settings.local.json`) during worktree removal; auto-creates GitHub Issues from review items
+- **issue** — supports 5 issue types (bug, feature, chore, docs, review) with type-specific body templates; review mode is used by `clean` to convert review items into tracked issues
+- **clean** — full PR lifecycle orchestrator; preserves Claude Code local settings (`.claude/settings.local.json`) during worktree removal; delegates review item issue creation to `issue` skill
 
 ## Installation
 

@@ -85,26 +85,16 @@ Execute the **git:review** skill.
 
 ### Step 3.5. Issue Creation (if review items exist)
 
-If the review in Step 3 produced any items (minor, suggestion, convention, etc.), automatically create a GitHub Issue.
+If the review in Step 3 produced any items (minor, suggestion, convention, etc.), execute the **git:issue** skill with `--no-confirm` flag in review mode.
 
-```bash
-gh issue create \
-  --title "review: PR #<NUMBER> 리뷰 항목" \
-  --body "$(cat <<'EOF'
-## Source
-PR #<NUMBER>: <PR_TITLE>
-<PR_URL>
+Pass the following context to git:issue:
+- PR number, title, and URL
+- List of review items from the review step
 
-## Items
-- [ ] <filename>:<line> — <issue description> (<severity>)
-- [ ] ...
-EOF
-)"
-```
+Invoke: `git:issue --no-confirm` with the following review data:
+- PR `#<NUMBER>` — `"<TITLE>"` — `<URL>`
+- Review items list from Step 3
 
-- Collect all review items into a single issue as a checklist
-- Include severity tags for each item (minor, suggestion, convention, etc.)
-- Print the created issue number and URL
 - If no review items exist, skip this step entirely
 - If issue creation fails, print a warning and continue (non-blocking)
 

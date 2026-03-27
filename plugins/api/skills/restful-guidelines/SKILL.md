@@ -92,9 +92,9 @@ GET, HEAD, DELETE must not include request bodies.
 - `Content-Type: application/json` for bodies
 - `Accept: application/json` for content negotiation
 - `Location` header on 201 Created
-- `X-Total-Count` for collection size
+- `Total-Count` for collection size
 - RFC 5988 `Link` header for pagination
-- Custom headers omit deprecated `X-` prefix (RFC 6648)
+- **No `X-` prefix on custom headers** (RFC 6648/BCP 178) — `X-` was intended for experimental headers but causes naming conflicts when they become standards. All new APIs MUST define custom headers without this prefix. Exception: legacy headers already standardized with `X-` (e.g., `X-Forwarded-For`) retain their names for compatibility
 
 ## CRUD Behavior
 
@@ -112,8 +112,10 @@ GET, HEAD, DELETE must not include request bodies.
 
 **Header versioning is REQUIRED:**
 ```
-X-API-Version: 2024-01-20   (ISO 8601 date format)
+Api-Version: 2024-01-20   (ISO 8601 date format)
 ```
+
+> Header name uses no `X-` prefix per RFC 6648/BCP 178.
 
 - Requests without version header receive the latest stable version
 - Responses always include the applied version
@@ -123,7 +125,7 @@ X-API-Version: 2024-01-20   (ISO 8601 date format)
 
 ## Deprecation
 
-Deprecated APIs MUST include these response headers:
+Deprecated APIs MUST include these response headers (RFC 9745, RFC 8594):
 
 ```
 Deprecation: true
@@ -138,3 +140,4 @@ Link: <https://api.example.com/new-resource>; rel="successor-version"
 - Resource identifiers are opaque strings — clients must not parse structure
 - Avoid storing sensitive data in query strings (they get logged)
 - `Cache-Control` header specifies caching strategy
+- Custom header names MUST NOT use `X-` prefix (RFC 6648/BCP 178) — applies to all new APIs; `X-Forwarded-For` and other headers already standardized with `X-` are grandfathered exceptions

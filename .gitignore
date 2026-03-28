@@ -2,3 +2,4 @@
 .worktrees/
 docs/*
 !docs/adr/
+!docs/decisions/
